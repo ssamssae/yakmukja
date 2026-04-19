@@ -134,8 +134,10 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: Transform.translate(
-        offset: const Offset(0, -120),
+      // Transform.translate 로 올리면 Scaffold FAB 슬롯이 원위치라 탭이 안 잡힘.
+      // Padding 으로 슬롯 자체를 키워서 시각 위치 유지 + 히트테스트 정상화.
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 120),
         child: FloatingActionButton.extended(
           onPressed: () {
             Navigator.of(context).push(
