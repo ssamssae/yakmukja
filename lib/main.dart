@@ -42,6 +42,7 @@ class _FatalErrorApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.dark,
       darkTheme: ThemeData.dark(useMaterial3: true),
       home: Scaffold(
@@ -85,6 +86,7 @@ class YakmukjaApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: '약먹자',
+      debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.dark,
       darkTheme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
