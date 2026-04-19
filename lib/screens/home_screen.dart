@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../main.dart';
 import '../models/medicine.dart';
@@ -57,46 +56,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            Text(
-                              _todayString(),
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.outline,
-                              ),
-                            ),
-                            const Spacer(),
-                            GestureDetector(
-                              onTap: () {
-                                launchUrl(
-                                  Uri.parse('https://ssamssae.github.io/daejong-page'),
-                                  mode: LaunchMode.externalApplication,
-                                );
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.favorite, size: 12, color: Colors.amber.shade300),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '응원',
-                                      style: TextStyle(
-                                        color: Colors.amber.shade300,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
+                        Text(
+                          _todayString(),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.outline,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(

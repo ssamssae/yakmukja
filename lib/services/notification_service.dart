@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
@@ -7,41 +8,51 @@ import '../models/medicine.dart';
 
 class NotificationService {
   static final _plugin = FlutterLocalNotificationsPlugin();
+  static bool _initialized = false;
 
   static Future<void> init() async {
-    tz.initializeTimeZones();
-    final tzInfo = await FlutterTimezone.getLocalTimezone();
-    tz.setLocalLocation(tz.getLocation(tzInfo.identifier));
+    try {
+      tz.initializeTimeZones();
+      final tzInfo = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(tzInfo.identifier));
 
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
+      const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const iosSettings = DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
 
-    await _plugin.initialize(
-      settings: const InitializationSettings(android: androidSettings, iOS: iosSettings),
-    );
+      await _plugin.initialize(
+        settings: const InitializationSettings(android: androidSettings, iOS: iosSettings),
+      );
 
-    // iOS 권한 요청
-    await _plugin
-        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
-        ?.requestPermissions(alert: true, badge: true, sound: true);
+      // iOS 권한 요청
+      await _plugin
+          .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+          ?.requestPermissions(alert: true, badge: true, sound: true);
 
-    // Android 권한 요청
-    await _plugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.requestNotificationsPermission();
+      // Android 권한 요청
+      await _plugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+          ?.requestNotificationsPermission();
+
+      _initialized = true;
+    } catch (e, st) {
+      debugPrint('[NotificationService.init] failed: $e\n$st');
+      _initialized = false;
+    }
   }
 
   /// 약에 등록된 모든 시간에 매일 반복 알림 스케줄
   static Future<void> scheduleForMedicine(Medicine medicine) async {
+    if (!_initialized) return;
     await cancelForMedicine(medicine);
 
     for (int i = 0; i < medicine.times.length; i++) {
       final t = medicine.times[i];
       final id = _notificationId(medicine, i);
+      if (id == null) continue;
 
       await _plugin.zonedSchedule(
         id: id,
@@ -69,13 +80,19 @@ class NotificationService {
   }
 
   static Future<void> cancelForMedicine(Medicine medicine) async {
+    if (!_initialized) return;
     for (int i = 0; i < medicine.times.length; i++) {
-      await _plugin.cancel(id: _notificationId(medicine, i));
+      final id = _notificationId(medicine, i);
+      if (id == null) continue;
+      await _plugin.cancel(id: id);
     }
   }
 
-  static int _notificationId(Medicine medicine, int timeIndex) {
-    return (medicine.key as int) * 100 + timeIndex;
+  /// Box 에 아직 저장 전이면 key 가 null — 그 경우 null 반환해 schedule 생략.
+  static int? _notificationId(Medicine medicine, int timeIndex) {
+    final key = medicine.key;
+    if (key is! int) return null;
+    return key * 100 + timeIndex;
   }
 
   static tz.TZDateTime _nextDateTime(int hour, int minute) {
