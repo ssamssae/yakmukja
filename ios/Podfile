@@ -39,5 +39,11 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+    # Apple Silicon 에서 objective_c.framework 같은 의존성이 x86_64 fat binary 로
+    # 만들어져 IPA 에 섞여 들어가면 App Store 가 거절(409 Invalid executable).
+    # 디바이스 빌드(iphoneos) 에서는 x86_64 슬라이스를 항상 제외한다.
+    target.build_configurations.each do |config|
+      config.build_settings['EXCLUDED_ARCHS[sdk=iphoneos*]'] = 'x86_64'
+    end
   end
 end
