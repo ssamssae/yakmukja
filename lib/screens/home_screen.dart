@@ -47,6 +47,10 @@ class _HomeScreenState extends State<HomeScreen> {
           final nextEntry = _nextUntaken(entries);
 
           return CustomScrollView(
+            // 빈 상태에서 오버스크롤로 "등록된 약이 없어요" 가 화면 밖으로 밀려 나가는 이슈 방지
+            physics: entries.isEmpty
+                ? const NeverScrollableScrollPhysics()
+                : null,
             slivers: [
               SliverToBoxAdapter(
                 child: SafeArea(
@@ -121,10 +125,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
               if (entries.isEmpty)
                 const SliverFillRemaining(hasScrollBody: false, child: _EmptyState())
-              else
+              else ...[
                 ..._buildGroupedSlivers(context, grouped),
-
-              const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                const SliverToBoxAdapter(child: SizedBox(height: 100)),
+              ],
             ],
           );
         },
