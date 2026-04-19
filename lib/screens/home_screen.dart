@@ -134,17 +134,17 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const MedicineEditScreen()),
-          );
-        },
-        icon: Transform.translate(
-          offset: const Offset(0, -6),
-          child: const Icon(Icons.add_rounded),
+      floatingActionButton: Transform.translate(
+        offset: const Offset(0, -120),
+        child: FloatingActionButton.extended(
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const MedicineEditScreen()),
+            );
+          },
+          icon: const Icon(Icons.add_rounded),
+          label: const Text('약 등록'),
         ),
-        label: const Text('약 등록'),
       ),
     );
   }
