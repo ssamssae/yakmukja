@@ -261,14 +261,14 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
           createdAt: DateTime.now(),
         );
         await box.add(medicine);
-        NotificationService.scheduleForMedicine(medicine);
+        await NotificationService.scheduleForMedicine(medicine);
       } else {
         existing
           ..name = _nameCtrl.text.trim()
           ..dosage = _dosage!
           ..times = _times;
         await existing.save();
-        NotificationService.scheduleForMedicine(existing);
+        await NotificationService.scheduleForMedicine(existing);
       }
       if (mounted) Navigator.of(context).pop();
     } finally {
@@ -298,7 +298,7 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
       ),
     );
     if (confirm != true) return;
-    NotificationService.cancelForMedicine(widget.medicine!);
+    await NotificationService.cancelForMedicine(widget.medicine!);
     await widget.medicine!.delete();
     if (mounted) Navigator.of(context).pop();
   }

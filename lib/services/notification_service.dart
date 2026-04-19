@@ -81,9 +81,14 @@ class NotificationService {
 
   static Future<void> cancelForMedicine(Medicine medicine) async {
     if (!_initialized) return;
+    // key 가 null 화(=삭제) 되기 전에 id 를 먼저 스냅샷 — 호출자가 await 안 하고
+    // 곧바로 medicine.delete() 를 돌려도 취소 대상을 놓치지 않는다.
+    final ids = <int>[];
     for (int i = 0; i < medicine.times.length; i++) {
       final id = _notificationId(medicine, i);
-      if (id == null) continue;
+      if (id != null) ids.add(id);
+    }
+    for (final id in ids) {
       await _plugin.cancel(id: id);
     }
   }
