@@ -33,9 +33,11 @@ class NotificationService {
           ?.requestPermissions(alert: true, badge: true, sound: true);
 
       // Android 권한 요청
-      await _plugin
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-          ?.requestNotificationsPermission();
+      final android = _plugin
+          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      await android?.requestNotificationsPermission();
+      // Android 12+ 정확한 알람 권한 — 없으면 Doze 에서 지정시각이 지연됨
+      await android?.requestExactAlarmsPermission();
 
       _initialized = true;
     } catch (e, st) {
@@ -73,7 +75,7 @@ class NotificationService {
             presentSound: true,
           ),
         ),
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         matchDateTimeComponents: DateTimeComponents.time,
       );
     }
