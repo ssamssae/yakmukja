@@ -62,9 +62,9 @@
 	<!-- iPad 멀티태스킹(분할 화면) 미지원 선언 → Portrait 만 두고도 App Store 검증 통과 -->
 	<key>UIRequiresFullScreen</key>
 	<true/>
-	<!-- AdMob App ID. TODO: AdMob 콘솔 발급 실제 ID 로 교체. -->
+	<!-- AdMob App ID — 약먹자 iOS 운영 (2026-05-02 발급). -->
 	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-3940256099942544~1458002511</string>
+	<string>ca-app-pub-7025432711849670~1525526197</string>
 	<!-- ATT (App Tracking Transparency) 팝업 메시지 - iOS 14+ 필수 -->
 	<key>NSUserTrackingUsageDescription</key>
 	<string>더 적합한 광고를 보여드리기 위해 사용됩니다.</string>
