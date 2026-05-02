@@ -36,11 +36,13 @@ class AdsService {
     return 'ca-app-pub-3940256099942544/2934735716';
   }
 
-  // TODO: AdMob 콘솔에서 발급받은 실제 광고 단위 ID 로 교체.
+  // iOS 운영 ID — 2026-05-02 AdMob 콘솔 발급.
+  // Android 는 출시 안 함 (강대종 결정, Play 토큰 비용 절감) → test ID 유지.
+  // release 빌드여도 Android 코드 경로는 죽음 = test 광고만 노출 후 무영향.
   static const _realAndroidBannerUnitId =
       'ca-app-pub-3940256099942544/6300978111';
   static const _realIosBannerUnitId =
-      'ca-app-pub-3940256099942544/2934735716';
+      'ca-app-pub-7025432711849670/6770114012';
 }
 
 class AdaptiveBanner extends StatefulWidget {
