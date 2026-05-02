@@ -3,6 +3,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import 'models/medicine.dart';
 import 'screens/splash_screen.dart';
+import 'services/ads_service.dart';
 import 'services/notification_service.dart';
 
 const String medicineBoxName = 'medicines';
@@ -29,6 +30,7 @@ Future<void> main() async {
 
   // NotificationService 는 내부에서 예외를 흡수하도록 설계됨
   await NotificationService.init();
+  await AdsService.init();
 
   runApp(fatalError == null
       ? const YakmukjaApp()

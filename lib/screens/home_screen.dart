@@ -5,6 +5,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import '../main.dart';
 import '../models/medicine.dart';
+import '../services/ads_service.dart';
 import 'medicine_edit_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -133,6 +134,7 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         },
       ),
+      bottomNavigationBar: const AdaptiveBanner(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       // Transform.translate 로 올리면 Scaffold FAB 슬롯이 원위치라 탭이 안 잡힘.
       // Padding 으로 슬롯 자체를 키워서 시각 위치 유지 + 히트테스트 정상화.
