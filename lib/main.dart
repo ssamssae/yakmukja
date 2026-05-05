@@ -23,6 +23,10 @@ Future<void> main() async {
       await Hive.deleteBoxFromDisk(medicineBoxName);
       await Hive.openBox<Medicine>(medicineBoxName);
     }
+    // 30일 초과 복용 기록 정리 (무한 누적 방지)
+    for (final m in Hive.box<Medicine>(medicineBoxName).values) {
+      m.pruneOldRecords();
+    }
   } catch (e, st) {
     debugPrint('[main] Hive init fatal: $e\n$st');
     fatalError = e;

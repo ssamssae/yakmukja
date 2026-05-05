@@ -49,6 +49,19 @@ class Medicine extends HiveObject {
     }
     save();
   }
+
+  // takenRecords 는 "yyyy-MM-dd_HH:mm" 형식. 30일 초과 레코드를 제거한다.
+  // 앱 기동 시 한 번 호출하면 무한 누적을 막는다.
+  void pruneOldRecords({int keepDays = 30}) {
+    final cutoff = DateTime.now().subtract(Duration(days: keepDays));
+    final cutoffStr =
+        '${cutoff.year}-${cutoff.month.toString().padLeft(2, '0')}-${cutoff.day.toString().padLeft(2, '0')}';
+    final pruned = takenRecords.where((r) => r.compareTo(cutoffStr) >= 0).toList();
+    if (pruned.length != takenRecords.length) {
+      takenRecords = pruned;
+      save();
+    }
+  }
 }
 
 @HiveType(typeId: 1)
@@ -61,23 +74,18 @@ class DoseTime {
 
   DoseTime({required this.hour, required this.minute});
 
+  String get periodLabel {
+    if (hour < 5) return '밤';
+    if (hour < 9) return '아침';
+    if (hour < 12) return '오전';
+    if (hour < 14) return '낮';
+    if (hour < 18) return '오후';
+    return '저녁';
+  }
+
   String format() {
-    String period;
-    if (hour < 5) {
-      period = '밤';
-    } else if (hour < 9) {
-      period = '아침';
-    } else if (hour < 12) {
-      period = '오전';
-    } else if (hour < 14) {
-      period = '낮';
-    } else if (hour < 18) {
-      period = '오후';
-    } else {
-      period = '저녁';
-    }
     final h = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
     final m = minute.toString().padLeft(2, '0');
-    return '$period $h:$m';
+    return '$periodLabel $h:$m';
   }
 }
