@@ -353,15 +353,6 @@ class _MedicineCard extends StatelessWidget {
   final DoseTime time;
   const _MedicineCard({required this.medicine, required this.time});
 
-  static String _periodLabel2(int hour) {
-    if (hour < 5) return '밤';
-    if (hour < 9) return '아침';
-    if (hour < 12) return '오전';
-    if (hour < 14) return '낮';
-    if (hour < 18) return '오후';
-    return '저녁';
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -397,7 +388,7 @@ class _MedicineCard extends StatelessWidget {
                 child: Column(
                   children: [
                     Text(
-                      _periodLabel2(time.hour),
+                      time.periodLabel,
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: taken ? Colors.green : const Color(0xFFFFC107),
                         fontWeight: FontWeight.w600,
