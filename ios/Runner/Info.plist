@@ -68,8 +68,6 @@
 	<!-- Export Compliance: 표준 암호화(HTTPS/TLS)만 사용, 자체 알고리즘 없음. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
-	<!-- ATT (App Tracking Transparency) 팝업 메시지 - iOS 14+ 필수 -->
-	<key>NSUserTrackingUsageDescription</key>
-	<string>더 적합한 광고를 보여드리기 위해 사용됩니다.</string>
+	<!-- ATT 키 제거 (2026-05-12 1.0.2+5): ASC App Privacy 미선언 상태에서 binary ATT 신호 → BINARY_INDICATES_APP_TRACKS_USERS 409. AdMob non-personalized 광고만 사용. personalized 광고는 v1.0.3+ 에서 ATT UX + ASC Privacy 선언 + 코드 동작 세트로 추가. -->
 </dict>
 </plist>
