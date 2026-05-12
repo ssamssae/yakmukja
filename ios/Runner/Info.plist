@@ -65,6 +65,9 @@
 	<!-- AdMob App ID — 약먹자 iOS 운영 (2026-05-02 발급). -->
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-7025432711849670~1525526197</string>
+	<!-- Export Compliance: 표준 암호화(HTTPS/TLS)만 사용, 자체 알고리즘 없음. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<!-- ATT (App Tracking Transparency) 팝업 메시지 - iOS 14+ 필수 -->
 	<key>NSUserTrackingUsageDescription</key>
 	<string>더 적합한 광고를 보여드리기 위해 사용됩니다.</string>
