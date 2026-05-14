@@ -57,32 +57,35 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: SafeArea(
                   bottom: false,
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           _todayString(),
-                          style: theme.textTheme.bodyMedium?.copyWith(
+                          style: theme.textTheme.labelLarge?.copyWith(
                             color: theme.colorScheme.outline,
+                            letterSpacing: 0.3,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         Text(
                           entries.isEmpty
                               ? '등록된 약이 없어요'
                               : '오늘 $takenCount / ${entries.length} 완료',
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w700,
+                          style: theme.textTheme.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            height: 1.1,
+                            letterSpacing: -0.5,
                           ),
                         ),
                         if (entries.isNotEmpty) ...[
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 16),
                           ClipRRect(
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(8),
                             child: LinearProgressIndicator(
                               value: takenCount / entries.length,
-                              minHeight: 6,
+                              minHeight: 8,
                               backgroundColor: theme.colorScheme.surfaceContainerHighest,
                               valueColor: AlwaysStoppedAnimation<Color>(
                                 takenCount == entries.length
@@ -93,25 +96,29 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ],
                         // 다음 복용 카운트다운 (고정 높이)
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 14),
                         if (nextEntry != null)
                           _CountdownBanner(entry: nextEntry)
                         else if (entries.isNotEmpty && takenCount == entries.length)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                             decoration: BoxDecoration(
                               color: Colors.green.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: Colors.green.withValues(alpha: 0.25),
+                                width: 1,
+                              ),
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.check_circle_outline, size: 18, color: Colors.green),
-                                const SizedBox(width: 8),
+                                const Icon(Icons.celebration_rounded, size: 20, color: Colors.green),
+                                const SizedBox(width: 10),
                                 Text(
                                   '오늘 약을 모두 복용했어요!',
                                   style: TextStyle(
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.w600,
+                                    color: Colors.green.shade400,
+                                    fontWeight: FontWeight.w700,
                                     fontSize: 14,
                                   ),
                                 ),
@@ -220,20 +227,35 @@ class _HomeScreenState extends State<HomeScreen> {
     for (final entry in grouped.entries) {
       slivers.add(SliverToBoxAdapter(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
           child: Row(
             children: [
-              Icon(
-                _periodIcon(entry.key),
-                size: 18,
-                color: const Color(0xFFFFC107),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFC107).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  _periodIcon(entry.key),
+                  size: 16,
+                  color: const Color(0xFFFFC107),
+                ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 10),
               Text(
                 entry.key,
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w700,
-                  color: const Color(0xFFFFC107),
+                  letterSpacing: 0.2,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '${entry.value.length}',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.outline,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
@@ -307,39 +329,67 @@ class _CountdownBanner extends StatelessWidget {
       }
     }
 
+    final urgent = diff.isNegative || diff.inMinutes < 30;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: const Color(0xFFFFC107).withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: const Color(0xFFFFC107).withValues(alpha: urgent ? 0.45 : 0.2),
+          width: 1,
+        ),
       ),
       child: Row(
         children: [
-          const Icon(Icons.timer_outlined, size: 18, color: Color(0xFFFFC107)),
-          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFC107).withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.timer_outlined, size: 18, color: Color(0xFFFFC107)),
+          ),
+          const SizedBox(width: 12),
           Expanded(
-            child: RichText(
-              text: TextSpan(
-                style: theme.textTheme.bodyMedium,
-                children: [
-                  TextSpan(
-                    text: entry.medicine.name,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '다음 복용',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.outline,
+                    letterSpacing: 0.4,
                   ),
-                  TextSpan(
-                    text: ' ${entry.medicine.dosage}',
-                    style: TextStyle(color: theme.colorScheme.outline),
+                ),
+                const SizedBox(height: 2),
+                RichText(
+                  overflow: TextOverflow.ellipsis,
+                  text: TextSpan(
+                    style: theme.textTheme.bodyMedium,
+                    children: [
+                      TextSpan(
+                        text: entry.medicine.name,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      TextSpan(
+                        text: '  ${entry.medicine.dosage}',
+                        style: TextStyle(color: theme.colorScheme.outline),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
+          const SizedBox(width: 8),
           Text(
             countdown,
             style: const TextStyle(
               color: Color(0xFFFFC107),
-              fontWeight: FontWeight.w700,
-              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              fontSize: 15,
+              letterSpacing: -0.2,
             ),
           ),
         ],
@@ -358,6 +408,7 @@ class _MedicineCard extends StatelessWidget {
     final theme = Theme.of(context);
     final taken = medicine.isTaken(time);
 
+    final accent = taken ? Colors.green : const Color(0xFFFFC107);
     return Card(
       color: taken
           ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)
@@ -373,32 +424,37 @@ class _MedicineCard extends StatelessWidget {
           );
         },
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
           child: Row(
             children: [
               Container(
-                width: 60,
-                padding: const EdgeInsets.symmetric(vertical: 8),
+                width: 64,
+                padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: taken
-                      ? Colors.green.withValues(alpha: 0.2)
-                      : const Color(0xFFFFC107).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
+                  color: accent.withValues(alpha: taken ? 0.18 : 0.14),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: accent.withValues(alpha: taken ? 0.25 : 0.22),
+                    width: 1,
+                  ),
                 ),
                 child: Column(
                   children: [
                     Text(
                       time.periodLabel,
                       style: theme.textTheme.labelSmall?.copyWith(
-                        color: taken ? Colors.green : const Color(0xFFFFC107),
-                        fontWeight: FontWeight.w600,
+                        color: accent,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.3,
                       ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
                       '${time.hour == 0 ? 12 : (time.hour > 12 ? time.hour - 12 : time.hour)}:${time.minute.toString().padLeft(2, '0')}',
                       style: theme.textTheme.titleMedium?.copyWith(
-                        color: taken ? Colors.green : const Color(0xFFFFC107),
-                        fontWeight: FontWeight.w700,
+                        color: accent,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.3,
                       ),
                     ),
                   ],
@@ -412,18 +468,29 @@ class _MedicineCard extends StatelessWidget {
                     Text(
                       medicine.name,
                       style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                         decoration: taken ? TextDecoration.lineThrough : null,
                         color: taken ? theme.colorScheme.outline : null,
+                        letterSpacing: -0.2,
                       ),
                     ),
                     if (medicine.dosage.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        medicine.dosage,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.outline,
-                        ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.medical_services_outlined,
+                            size: 12,
+                            color: theme.colorScheme.outline,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            medicine.dosage,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.outline,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ],
@@ -479,36 +546,45 @@ class _EmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFC107).withValues(alpha: 0.1),
-              shape: BoxShape.circle,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 80),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  colors: [
+                    const Color(0xFFFFC107).withValues(alpha: 0.18),
+                    const Color(0xFFFFC107).withValues(alpha: 0.04),
+                  ],
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.medication_rounded,
+                size: 64,
+                color: Color(0xFFFFC107),
+              ),
             ),
-            child: const Icon(
-              Icons.medication_outlined,
-              size: 56,
-              color: Color(0xFFFFC107),
+            const SizedBox(height: 24),
+            Text(
+              '아직 등록된 약이 없어요',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.2,
+              ),
             ),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            '아직 등록된 약이 없어요',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
+            const SizedBox(height: 8),
+            Text(
+              '아래 버튼을 눌러 약을 추가해 보세요',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.outline,
+              ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '아래 버튼을 눌러 약을 추가해 보세요',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.outline,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

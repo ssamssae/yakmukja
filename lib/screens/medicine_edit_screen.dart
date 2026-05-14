@@ -336,72 +336,38 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
           children: [
             // 약 이름
             const _SectionLabel(label: '약 이름'),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             TextFormField(
               controller: _nameCtrl,
               decoration: const InputDecoration(
-                hintText: '약 이름을 입력하세요',
-                prefixIcon: Icon(Icons.medication_rounded),
+                hintText: '예: 비타민 D, 혈압약',
+                prefixIcon: Icon(Icons.medication_rounded, color: Color(0xFFFFC107)),
+              ),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
               ),
               validator: (v) =>
                   (v == null || v.trim().isEmpty) ? '이름을 입력해 주세요.' : null,
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
 
             // 복용량 섹션 (복용시간과 동일 레이아웃)
             Row(
               children: [
                 const _SectionLabel(label: '복용량'),
                 const Spacer(),
-                GestureDetector(
-                  onTap: _showDosagePicker,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFC107).withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.add_rounded, size: 16, color: Color(0xFFFFC107)),
-                        SizedBox(width: 4),
-                        Text(
-                          '추가',
-                          style: TextStyle(
-                            color: Color(0xFFFFC107),
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                _AddPillButton(onTap: _showDosagePicker),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             if (_dosage == null)
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Center(
-                  child: Text(
-                    '복용량을 추가해 주세요',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.outline,
-                    ),
-                  ),
-                ),
-              )
+              _EmptyPlaceholder(text: '복용량을 추가해 주세요', onTap: _showDosagePicker)
             else
               Align(
                 alignment: Alignment.centerLeft,
@@ -413,69 +379,33 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                   ),
                   label: Text(
                     _dosage!,
-                    style: const TextStyle(fontWeight: FontWeight.w500),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
-                  deleteIcon: const Icon(Icons.close, size: 18),
+                  deleteIcon: const Icon(Icons.close_rounded, size: 18),
                   onDeleted: () => setState(() => _dosage = null),
-                  backgroundColor: theme.colorScheme.surfaceContainerHigh,
-                  side: BorderSide.none,
+                  backgroundColor: const Color(0xFFFFC107).withValues(alpha: 0.1),
+                  side: BorderSide(
+                    color: const Color(0xFFFFC107).withValues(alpha: 0.3),
+                  ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 28),
 
             // 복용 시간 섹션
             Row(
               children: [
                 const _SectionLabel(label: '복용 시간'),
                 const Spacer(),
-                GestureDetector(
-                  onTap: _showTimePicker,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFC107).withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.add_rounded, size: 16, color: Color(0xFFFFC107)),
-                        SizedBox(width: 4),
-                        Text(
-                          '추가',
-                          style: TextStyle(
-                            color: Color(0xFFFFC107),
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                _AddPillButton(onTap: _showTimePicker),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             if (_times.isEmpty)
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Center(
-                  child: Text(
-                    '시간을 추가해 주세요',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.outline,
-                    ),
-                  ),
-                ),
-              )
+              _EmptyPlaceholder(text: '시간을 추가해 주세요', onTap: _showTimePicker)
             else
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -493,30 +423,45 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                           ),
                           label: Text(
                             _times[i].format(),
-                            style: const TextStyle(fontWeight: FontWeight.w500),
+                            style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
-                          deleteIcon: const Icon(Icons.close, size: 18),
+                          deleteIcon: const Icon(Icons.close_rounded, size: 18),
                           onDeleted: () => setState(() => _times.removeAt(i)),
-                          backgroundColor: theme.colorScheme.surfaceContainerHigh,
-                          side: BorderSide.none,
+                          backgroundColor: const Color(0xFFFFC107).withValues(alpha: 0.1),
+                          side: BorderSide(
+                            color: const Color(0xFFFFC107).withValues(alpha: 0.3),
+                          ),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(Icons.notifications_outlined, size: 14, color: theme.colorScheme.outline),
-                      const SizedBox(width: 4),
-                      Text(
-                        '설정된 시간에 푸시 알림이 발송됩니다',
-                        style: theme.textTheme.bodySmall?.copyWith(
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.notifications_outlined,
+                          size: 16,
                           color: theme.colorScheme.outline,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '설정된 시간에 푸시 알림이 발송됩니다',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.outline,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -536,9 +481,100 @@ class _SectionLabel extends StatelessWidget {
     return Text(
       label,
       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w800,
             color: const Color(0xFFFFC107),
+            letterSpacing: 0.3,
           ),
+    );
+  }
+}
+
+class _AddPillButton extends StatelessWidget {
+  final VoidCallback onTap;
+  const _AddPillButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFC107).withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: const Color(0xFFFFC107).withValues(alpha: 0.35),
+              width: 1,
+            ),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.add_rounded, size: 16, color: Color(0xFFFFC107)),
+              SizedBox(width: 4),
+              Text(
+                '추가',
+                style: TextStyle(
+                  color: Color(0xFFFFC107),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyPlaceholder extends StatelessWidget {
+  final String text;
+  final VoidCallback onTap;
+  const _EmptyPlaceholder({required this.text, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 16),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: theme.colorScheme.outline.withValues(alpha: 0.25),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.add_circle_outline_rounded,
+                size: 18,
+                color: theme.colorScheme.outline,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                text,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.outline,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
