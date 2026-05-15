@@ -56,10 +56,11 @@ class NotificationService {
       final id = _notificationId(medicine, i);
       if (id == null) continue;
 
+      // 잠금화면에 약 이름·복용량 평문 노출 방지. 자세한 내용은 앱 진입 후만.
       await _plugin.zonedSchedule(
         id: id,
         title: '약먹자 💊',
-        body: '${medicine.name} ${medicine.dosage} 드실 시간입니다.',
+        body: '드실 약이 있어요.',
         scheduledDate: _nextDateTime(t.hour, t.minute),
         notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
@@ -68,6 +69,7 @@ class NotificationService {
             channelDescription: '약 복용 시간 알림',
             importance: Importance.high,
             priority: Priority.high,
+            visibility: NotificationVisibility.private,
           ),
           iOS: DarwinNotificationDetails(
             presentAlert: true,
