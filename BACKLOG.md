@@ -10,7 +10,7 @@
 
 ## P1
 
-- iOS-only 운영 정책 명시 (README 상단) — `feedback_app_release_strategy.md`: 핵심 앱만 출시 룰. 약먹자 = Android 보류 (Play 토큰 ₩30K 회피, 강대종 결정 2026-05-02).
+- ~~iOS-only 운영 정책 명시 (README 상단)~~ — `feedback_app_release_strategy.md`: 핵심 앱만 출시 룰. 약먹자 = Android 보류 (Play 토큰 ₩30K 회피, 강대종 결정 2026-05-02). **(close 2026-05-15: PR #8 squash b697a1a, README 전면 교체)**
 - 런치 이미지 placeholder 검사 hook — `feedback_ios_launch_image_placeholder.md` 재발 방지. iOS 런치 이미지 placeholder 잔존 시 빌드 차단.
 - iPad13 스크린샷 슬롯 풀 적용 검증 — issues/`2026-04-24-ios-ipad13-screenshot-mandatory.md`. iPad13 스크린샷 필수 슬롯 누락 시 ASC 제출 차단.
 
