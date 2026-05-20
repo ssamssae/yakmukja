@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  약먹자 데이터 추출 정책 (Android 12+, API 31+).
+
+  마케팅 정책 "데이터 서버 전송 없음 · 100% 로컬 전용" 과의 정합을 위해
+  cloud-backup (Google Drive 자동 백업) + device-transfer (기기 이동) 양쪽 모두에서
+  모든 앱 데이터(Hive 박스 · SharedPreferences · 내부 파일)를 명시 제외한다.
+
+  API 30 이하는 AndroidManifest.xml 의 android:allowBackup="false" 가 동등 효과.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="root" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="root" />
+    </device-transfer>
+</data-extraction-rules>
