@@ -5,6 +5,7 @@ import 'models/medicine.dart';
 import 'screens/splash_screen.dart';
 import 'services/ads_service.dart';
 import 'services/notification_service.dart';
+import 'theme/app_theme.dart';
 
 const String medicineBoxName = 'medicines';
 
@@ -49,10 +50,8 @@ class _FatalErrorApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      themeMode: ThemeMode.dark,
-      darkTheme: ThemeData.dark(useMaterial3: true),
+      theme: AppTheme.light,
       home: Scaffold(
-        backgroundColor: const Color(0xFF121212),
         body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -60,21 +59,21 @@ class _FatalErrorApp extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.error_outline, color: Color(0xFFFFC107), size: 48),
+                const Icon(Icons.error_outline, color: AppColors.primary, size: 48),
                 const SizedBox(height: 16),
                 const Text(
                   '앱을 시작할 수 없어요',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white),
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.textStrong),
                 ),
                 const SizedBox(height: 8),
                 const Text(
                   '저장소 초기화 중 오류가 발생했습니다. 앱을 재실행해 주세요.',
-                  style: TextStyle(color: Colors.white70),
+                  style: TextStyle(color: AppColors.textBody),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   '$error',
-                  style: const TextStyle(color: Colors.white38, fontSize: 12),
+                  style: const TextStyle(color: AppColors.textFaint, fontSize: 12),
                 ),
               ],
             ),
@@ -93,45 +92,7 @@ class YakmukjaApp extends StatelessWidget {
     return MaterialApp(
       title: '약먹자',
       debugShowCheckedModeBanner: false,
-      themeMode: ThemeMode.dark,
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFFFC107),
-          brightness: Brightness.dark,
-        ),
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFF121212),
-        appBarTheme: const AppBarTheme(
-          centerTitle: true,
-          scrolledUnderElevation: 0,
-          backgroundColor: Colors.transparent,
-        ),
-        cardTheme: CardThemeData(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFFFC107), width: 2),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        ),
-        floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          elevation: 2,
-        ),
-      ),
+      theme: AppTheme.light,
       home: const SplashScreen(),
     );
   }
