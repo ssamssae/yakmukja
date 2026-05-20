@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
 import 'home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -50,7 +51,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A1A),
+      backgroundColor: AppColors.bg,
       body: Center(
         child: FadeTransition(
           opacity: _fadeIn,
@@ -64,7 +65,7 @@ class _SplashScreenState extends State<SplashScreen>
                   borderRadius: BorderRadius.circular(28),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFFFC107).withValues(alpha: 0.3),
+                      color: AppColors.primary.withValues(alpha: 0.25),
                       blurRadius: 30,
                       offset: const Offset(0, 8),
                     ),
@@ -74,10 +75,13 @@ class _SplashScreenState extends State<SplashScreen>
                 child: Image.asset(
                   SplashScreen.logoAssetPath,
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stack) => const Icon(
-                    Icons.medication_rounded,
-                    size: 72,
-                    color: Color(0xFFFFC107),
+                  errorBuilder: (context, error, stack) => Container(
+                    color: AppColors.primarySoft,
+                    child: const Icon(
+                      Icons.medication_rounded,
+                      size: 72,
+                      color: AppColors.primary,
+                    ),
                   ),
                 ),
               ),
@@ -87,7 +91,7 @@ class _SplashScreenState extends State<SplashScreen>
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.w800,
-                  color: Colors.white,
+                  color: AppColors.textStrong,
                   letterSpacing: -0.5,
                 ),
               ),
@@ -97,7 +101,7 @@ class _SplashScreenState extends State<SplashScreen>
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFFFFC107),
+                  color: AppColors.primaryDark,
                   letterSpacing: 1.0,
                 ),
               ),

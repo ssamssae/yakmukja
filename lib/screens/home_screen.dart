@@ -6,6 +6,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../main.dart';
 import '../models/medicine.dart';
 import '../services/ads_service.dart';
+import '../theme/app_theme.dart';
 import 'medicine_edit_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -89,8 +90,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               backgroundColor: theme.colorScheme.surfaceContainerHighest,
                               valueColor: AlwaysStoppedAnimation<Color>(
                                 takenCount == entries.length
-                                    ? Colors.green
-                                    : const Color(0xFFFFC107),
+                                    ? AppColors.success
+                                    : AppColors.primary,
                               ),
                             ),
                           ),
@@ -103,21 +104,21 @@ class _HomeScreenState extends State<HomeScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                             decoration: BoxDecoration(
-                              color: Colors.green.withValues(alpha: 0.12),
+                              color: AppColors.success.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
-                                color: Colors.green.withValues(alpha: 0.25),
+                                color: AppColors.success.withValues(alpha: 0.25),
                                 width: 1,
                               ),
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.celebration_rounded, size: 20, color: Colors.green),
+                                const Icon(Icons.celebration_rounded, size: 20, color: AppColors.success),
                                 const SizedBox(width: 10),
                                 Text(
                                   '오늘 약을 모두 복용했어요!',
                                   style: TextStyle(
-                                    color: Colors.green.shade400,
+                                    color: AppColors.success,
                                     fontWeight: FontWeight.w700,
                                     fontSize: 14,
                                   ),
@@ -233,13 +234,13 @@ class _HomeScreenState extends State<HomeScreen> {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFC107).withValues(alpha: 0.12),
+                  color: AppColors.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                   _periodIcon(entry.key),
                   size: 16,
-                  color: const Color(0xFFFFC107),
+                  color: AppColors.primary,
                 ),
               ),
               const SizedBox(width: 10),
@@ -333,10 +334,10 @@ class _CountdownBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFC107).withValues(alpha: 0.12),
+        color: AppColors.primary.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: const Color(0xFFFFC107).withValues(alpha: urgent ? 0.45 : 0.2),
+          color: AppColors.primary.withValues(alpha: urgent ? 0.45 : 0.2),
           width: 1,
         ),
       ),
@@ -345,10 +346,10 @@ class _CountdownBanner extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFC107).withValues(alpha: 0.18),
+              color: AppColors.primary.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(Icons.timer_outlined, size: 18, color: Color(0xFFFFC107)),
+            child: const Icon(Icons.timer_outlined, size: 18, color: AppColors.primary),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -386,7 +387,7 @@ class _CountdownBanner extends StatelessWidget {
           Text(
             countdown,
             style: const TextStyle(
-              color: Color(0xFFFFC107),
+              color: AppColors.primary,
               fontWeight: FontWeight.w800,
               fontSize: 15,
               letterSpacing: -0.2,
@@ -408,11 +409,9 @@ class _MedicineCard extends StatelessWidget {
     final theme = Theme.of(context);
     final taken = medicine.isTaken(time);
 
-    final accent = taken ? Colors.green : const Color(0xFFFFC107);
+    final accent = taken ? AppColors.success : AppColors.primary;
     return Card(
-      color: taken
-          ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)
-          : theme.colorScheme.surfaceContainerHigh,
+      color: taken ? const Color(0xFFF1F3F5) : AppColors.surface,
       margin: EdgeInsets.zero,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -522,10 +521,10 @@ class _TakenButton extends StatelessWidget {
         width: 44,
         height: 44,
         decoration: BoxDecoration(
-          color: taken ? Colors.green : Colors.transparent,
+          color: taken ? AppColors.success : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: taken ? Colors.green : Theme.of(context).colorScheme.outline,
+            color: taken ? AppColors.success : Theme.of(context).colorScheme.outline,
             width: taken ? 0 : 1.5,
           ),
         ),
@@ -556,8 +555,8 @@ class _EmptyState extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: RadialGradient(
                   colors: [
-                    const Color(0xFFFFC107).withValues(alpha: 0.18),
-                    const Color(0xFFFFC107).withValues(alpha: 0.04),
+                    AppColors.primary.withValues(alpha: 0.18),
+                    AppColors.primary.withValues(alpha: 0.04),
                   ],
                 ),
                 shape: BoxShape.circle,
@@ -565,7 +564,7 @@ class _EmptyState extends StatelessWidget {
               child: const Icon(
                 Icons.medication_rounded,
                 size: 64,
-                color: Color(0xFFFFC107),
+                color: AppColors.primary,
               ),
             ),
             const SizedBox(height: 24),

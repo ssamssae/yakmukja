@@ -5,6 +5,7 @@ import 'package:hive/hive.dart';
 import '../main.dart';
 import '../models/medicine.dart';
 import '../services/notification_service.dart';
+import '../theme/app_theme.dart';
 
 class MedicineEditScreen extends StatefulWidget {
   final Medicine? medicine;
@@ -326,7 +327,7 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFFFFC107),
+                  color: AppColors.primary,
                 ),
               ),
             ),
@@ -345,7 +346,7 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
               controller: _nameCtrl,
               decoration: const InputDecoration(
                 hintText: '예: 비타민 D, 혈압약',
-                prefixIcon: Icon(Icons.medication_rounded, color: Color(0xFFFFC107)),
+                prefixIcon: Icon(Icons.medication_rounded, color: AppColors.primary),
               ),
               style: const TextStyle(
                 fontSize: 16,
@@ -375,7 +376,7 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                   avatar: const Icon(
                     Icons.medical_services_rounded,
                     size: 18,
-                    color: Color(0xFFFFC107),
+                    color: AppColors.primary,
                   ),
                   label: Text(
                     _dosage!,
@@ -383,9 +384,9 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                   ),
                   deleteIcon: const Icon(Icons.close_rounded, size: 18),
                   onDeleted: () => setState(() => _dosage = null),
-                  backgroundColor: const Color(0xFFFFC107).withValues(alpha: 0.1),
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                   side: BorderSide(
-                    color: const Color(0xFFFFC107).withValues(alpha: 0.3),
+                    color: AppColors.primary.withValues(alpha: 0.3),
                   ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -419,7 +420,7 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                           avatar: const Icon(
                             Icons.notifications_active_rounded,
                             size: 18,
-                            color: Color(0xFFFFC107),
+                            color: AppColors.primary,
                           ),
                           label: Text(
                             _times[i].format(),
@@ -427,9 +428,9 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                           ),
                           deleteIcon: const Icon(Icons.close_rounded, size: 18),
                           onDeleted: () => setState(() => _times.removeAt(i)),
-                          backgroundColor: const Color(0xFFFFC107).withValues(alpha: 0.1),
+                          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                           side: BorderSide(
-                            color: const Color(0xFFFFC107).withValues(alpha: 0.3),
+                            color: AppColors.primary.withValues(alpha: 0.3),
                           ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -482,7 +483,7 @@ class _SectionLabel extends StatelessWidget {
       label,
       style: Theme.of(context).textTheme.titleSmall?.copyWith(
             fontWeight: FontWeight.w800,
-            color: const Color(0xFFFFC107),
+            color: AppColors.primary,
             letterSpacing: 0.3,
           ),
     );
@@ -503,22 +504,22 @@ class _AddPillButton extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFFFFC107).withValues(alpha: 0.15),
+            color: AppColors.primary.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: const Color(0xFFFFC107).withValues(alpha: 0.35),
+              color: AppColors.primary.withValues(alpha: 0.35),
               width: 1,
             ),
           ),
           child: const Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.add_rounded, size: 16, color: Color(0xFFFFC107)),
+              Icon(Icons.add_rounded, size: 16, color: AppColors.primary),
               SizedBox(width: 4),
               Text(
                 '추가',
                 style: TextStyle(
-                  color: Color(0xFFFFC107),
+                  color: AppColors.primary,
                   fontWeight: FontWeight.w700,
                   fontSize: 13,
                 ),
