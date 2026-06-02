@@ -11,14 +11,25 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 /// AppId 도 마찬가지 (`AndroidManifest.xml` 와 `Info.plist` 의 GADApplicationIdentifier).
 class AdsService {
   static bool _initialized = false;
+  static Future<void>? _initializing;
 
-  static Future<void> init() async {
-    if (_initialized) return;
+  static Future<void> init() {
+    if (_initialized) return Future<void>.value();
+    final inFlight = _initializing;
+    if (inFlight != null) return inFlight;
+
+    _initializing = _init();
+    return _initializing!;
+  }
+
+  static Future<void> _init() async {
     try {
       await MobileAds.instance.initialize();
       _initialized = true;
     } catch (e) {
       debugPrint('[AdsService] init failed: $e');
+    } finally {
+      _initializing = null;
     }
   }
 
@@ -41,8 +52,7 @@ class AdsService {
   // release 빌드여도 Android 코드 경로는 죽음 = test 광고만 노출 후 무영향.
   static const _realAndroidBannerUnitId =
       'ca-app-pub-3940256099942544/6300978111';
-  static const _realIosBannerUnitId =
-      'ca-app-pub-7025432711849670/6770114012';
+  static const _realIosBannerUnitId = 'ca-app-pub-7025432711849670/6770114012';
 }
 
 class AdaptiveBanner extends StatefulWidget {
@@ -66,10 +76,12 @@ class _AdaptiveBannerState extends State<AdaptiveBanner> {
   }
 
   Future<void> _loadAd() async {
+    await AdsService.init();
+    if (!mounted) return;
+
     final mq = MediaQuery.of(context);
     final width = mq.size.width.truncate();
-    final size =
-        await AdSize.getLargeAnchoredAdaptiveBannerAdSize(width);
+    final size = await AdSize.getLargeAnchoredAdaptiveBannerAdSize(width);
     if (size == null || !mounted) return;
 
     final ad = BannerAd(

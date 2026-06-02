@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -14,32 +16,64 @@ Future<void> main() async {
 
   Object? fatalError;
   try {
-    await Hive.initFlutter();
-    Hive.registerAdapter(MedicineAdapter());
-    Hive.registerAdapter(DoseTimeAdapter());
-    try {
-      await Hive.openBox<Medicine>(medicineBoxName);
-    } catch (e, st) {
-      debugPrint('[main] openBox failed, deleting corrupted box: $e\n$st');
-      await Hive.deleteBoxFromDisk(medicineBoxName);
-      await Hive.openBox<Medicine>(medicineBoxName);
-    }
-    // 30일 초과 복용 기록 정리 (무한 누적 방지)
-    for (final m in Hive.box<Medicine>(medicineBoxName).values) {
-      m.pruneOldRecords();
-    }
+    await _initLocalStore();
   } catch (e, st) {
     debugPrint('[main] Hive init fatal: $e\n$st');
     fatalError = e;
   }
 
-  // NotificationService 는 내부에서 예외를 흡수하도록 설계됨
-  await NotificationService.init();
-  await AdsService.init();
+  runApp(
+    fatalError == null
+        ? const YakmukjaApp()
+        : _FatalErrorApp(error: fatalError),
+  );
 
-  runApp(fatalError == null
-      ? const YakmukjaApp()
-      : _FatalErrorApp(error: fatalError));
+  if (fatalError == null) {
+    _startDeferredColdStartWork();
+  }
+}
+
+Future<void> _initLocalStore() async {
+  await Hive.initFlutter();
+  Hive.registerAdapter(MedicineAdapter());
+  Hive.registerAdapter(DoseTimeAdapter());
+  try {
+    await Hive.openBox<Medicine>(medicineBoxName);
+  } catch (e, st) {
+    debugPrint('[main] openBox failed, deleting corrupted box: $e\n$st');
+    await Hive.deleteBoxFromDisk(medicineBoxName);
+    await Hive.openBox<Medicine>(medicineBoxName);
+  }
+}
+
+void _startDeferredColdStartWork() {
+  unawaited(
+    Future<void>(() async {
+      await _runDeferredStartupStep('pruneOldRecords', () {
+        // 30일 초과 복용 기록 정리 (무한 누적 방지). 첫 프레임 이후로 미뤄
+        // cold-start 흰 화면 시간을 늘리지 않는다.
+        for (final m in Hive.box<Medicine>(medicineBoxName).values) {
+          m.pruneOldRecords();
+        }
+      });
+      await _runDeferredStartupStep(
+        'NotificationService.init',
+        NotificationService.init,
+      );
+      await _runDeferredStartupStep('AdsService.init', AdsService.init);
+    }),
+  );
+}
+
+Future<void> _runDeferredStartupStep(
+  String label,
+  FutureOr<void> Function() action,
+) async {
+  try {
+    await action();
+  } catch (e, st) {
+    debugPrint('[main] deferred $label failed: $e\n$st');
+  }
 }
 
 class _FatalErrorApp extends StatelessWidget {
@@ -59,11 +93,19 @@ class _FatalErrorApp extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.error_outline, color: AppColors.primary, size: 48),
+                const Icon(
+                  Icons.error_outline,
+                  color: AppColors.primary,
+                  size: 48,
+                ),
                 const SizedBox(height: 16),
                 const Text(
                   '앱을 시작할 수 없어요',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.textStrong),
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textStrong,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 const Text(
@@ -73,7 +115,10 @@ class _FatalErrorApp extends StatelessWidget {
                 const SizedBox(height: 16),
                 Text(
                   '$error',
-                  style: const TextStyle(color: AppColors.textFaint, fontSize: 12),
+                  style: const TextStyle(
+                    color: AppColors.textFaint,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),
