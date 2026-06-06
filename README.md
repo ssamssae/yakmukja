@@ -11,6 +11,13 @@
 - iOS: App Store 출시 완료
 - Android: 빌드는 가능하지만 Play 제출 안 함 (release signing 까지 박혀 있어 미래에 풀고 싶으면 바로 가능)
 
+## 광고 정책
+
+**iOS-only AdMob 배너 유지.** iOS 출시본은 홈 화면 하단에 비개인화 AdMob 배너를 표시한다.
+Android 는 출시 보류 상태라 AdMob App ID / 광고 단위 ID 를 발급하지 않고, Android 런타임에서는 광고 SDK 초기화와 배너 로드를 건너뛴다.
+
+따라서 약먹자는 "광고 없음"으로 마케팅하지 않는다. 현재 정합한 표현은 "계정 가입 없음, 개발자 서버 전송 없음, iOS 하단 배너 광고"다.
+
 ## 기능
 
 - 약 등록 (이름 · 용량 · 복용 시간대 — 아침/오후/저녁)
@@ -22,7 +29,7 @@
 
 - Flutter (FVM 사용, `~/fvm/versions/stable/bin/flutter`)
 - Dart 3.x
-- Hive (`medicine.dart` / `medicine.g.dart`), `flutter_local_notifications`, `google_mobile_ads`
+- Hive (`medicine.dart` / `medicine.g.dart`), `flutter_local_notifications`, `google_mobile_ads` (iOS 배너)
 - M1 Mac (darwin-arm64)
 
 ## 자주 쓰는 명령
@@ -45,7 +52,7 @@ fvm dart analyze lib/
 
 - iOS 전통 AppDelegate 방식 사용 — FlutterImplicitEngineDelegate 금지
 - 런처 아이콘 투명 배경 금지 (App Store 거절 사유)
-- AdMob 배너 광고 (운영 ID iOS-only 적용) — 홈 화면 하단
+- AdMob 배너 광고 (운영 ID iOS-only 적용) — 홈 화면 하단. Android 광고 비활성.
 
 ## 패키지 정보
 
