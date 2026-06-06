@@ -10,17 +10,28 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 /// 활성화하고, Android 는 Play 출시 보류 상태라 SDK init/banner load 를 하지 않는다.
 class AdsService {
   static bool _initialized = false;
+  static Future<void>? _initializing;
 
   static bool get isSupportedPlatform => Platform.isIOS;
 
-  static Future<void> init() async {
-    if (!isSupportedPlatform) return;
-    if (_initialized) return;
+  static Future<void> init() {
+    if (!isSupportedPlatform) return Future<void>.value();
+    if (_initialized) return Future<void>.value();
+    final inFlight = _initializing;
+    if (inFlight != null) return inFlight;
+
+    _initializing = _init();
+    return _initializing!;
+  }
+
+  static Future<void> _init() async {
     try {
       await MobileAds.instance.initialize();
       _initialized = true;
     } catch (e) {
       debugPrint('[AdsService] init failed: $e');
+    } finally {
+      _initializing = null;
     }
   }
 
@@ -58,6 +69,9 @@ class _AdaptiveBannerState extends State<AdaptiveBanner> {
   }
 
   Future<void> _loadAd() async {
+    await AdsService.init();
+    if (!mounted) return;
+
     final mq = MediaQuery.of(context);
     final width = mq.size.width.truncate();
     final size = await AdSize.getLargeAnchoredAdaptiveBannerAdSize(width);
