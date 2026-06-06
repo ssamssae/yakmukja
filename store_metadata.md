@@ -10,6 +10,7 @@
 - In-App Purchase: 없음
 - 개인정보처리방침 URL: https://ssamssae.github.io/daejong-page/privacy-yakmukja.html
 - 지원 URL: https://ssamssae.github.io/daejong-page/
+- 광고 정책: iOS 출시본은 홈 화면 하단 비개인화 AdMob 배너 1개를 표시. Android 출시는 보류 중이며 Android 광고 ID/App ID 는 미발급.
 
 ## 키워드 (ASC, 100자 콤마 구분)
 약,복용,알림,약먹자,복약,약통,처방,영양제,비타민,건강,리마인더,헬스케어
@@ -38,10 +39,10 @@
 ■ 디자인 철학
 - 눈이 편한 다크 테마
 - 군더더기 없는 한 화면 구성
-- 광고 없음, 계정 가입 없음, 데이터 서버 전송 없음
+- 계정 가입 없음, 개발자 서버 전송 없음, iOS 하단 배너 광고
 
 ■ 개인정보 보호
-모든 약 정보와 복용 기록은 **기기 내부에만 저장**됩니다. 서버로 전송되는 데이터가 없으며 외부 계정도 필요 없습니다.
+모든 약 정보와 복용 기록은 **기기 내부에만 저장**됩니다. 개발자 서버로 전송되는 데이터가 없으며 외부 계정도 필요 없습니다. iOS 버전에는 앱 운영을 위한 하단 배너 광고가 표시될 수 있습니다.
 
 문의·피드백: ssamssae@naver.com
 
@@ -57,7 +58,7 @@
 ## Play Store (Android)
 
 ### 짧은 설명 (80자)
-매일 드시는 약·영양제 복용 시간 알림. 휠 UI 5초 등록, 다크 테마, 광고 없음.
+매일 드시는 약·영양제 복용 시간 알림. 휠 UI 5초 등록, 다크 테마, 가입 없음.
 
 ### 긴 설명
 (위 ASC 설명 동일 사용)
@@ -77,6 +78,6 @@
 없음.
 
 ## 데이터 수집 선언 (ASC App Privacy / Play Data Safety)
-- 수집 없음
-- 제3자 공유 없음
-- 분석 SDK 없음 (Firebase Analytics 미사용)
+- 앱 자체 계정/분석/개발자 서버 수집 없음
+- 약 정보와 복용 기록은 기기 내부 Hive 저장소에 저장
+- iOS AdMob 배너 사용. App Privacy / Play Data Safety 입력 시 Google Mobile Ads SDK 사용 범위를 별도 확인
