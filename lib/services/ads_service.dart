@@ -6,13 +6,15 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 /// AdMob 초기화 + 광고 단위 ID 관리.
 ///
-/// 출시 전 강대종님이 AdMob 콘솔에서 약먹자 앱 등록 + 배너 광고단위 생성 후,
-/// 아래 `_realAndroidBannerUnitId` / `_realIosBannerUnitId` 만 교체하면 됨.
-/// AppId 도 마찬가지 (`AndroidManifest.xml` 와 `Info.plist` 의 GADApplicationIdentifier).
+/// 정책: 약먹자는 iOS-only 출시 상태를 유지한다. AdMob 도 iOS 운영 배너만
+/// 활성화하고, Android 는 Play 출시 보류 상태라 SDK init/banner load 를 하지 않는다.
 class AdsService {
   static bool _initialized = false;
 
+  static bool get isSupportedPlatform => Platform.isIOS;
+
   static Future<void> init() async {
+    if (!isSupportedPlatform) return;
     if (_initialized) return;
     try {
       await MobileAds.instance.initialize();
@@ -23,26 +25,15 @@ class AdsService {
   }
 
   static String get bannerAdUnitId {
-    if (kDebugMode) return _testBannerUnitId;
-    if (Platform.isAndroid) return _realAndroidBannerUnitId;
+    if (kDebugMode) return _testIosBannerUnitId;
     if (Platform.isIOS) return _realIosBannerUnitId;
-    return _testBannerUnitId;
+    return _testIosBannerUnitId;
   }
 
-  static String get _testBannerUnitId {
-    if (Platform.isAndroid) {
-      return 'ca-app-pub-3940256099942544/6300978111';
-    }
-    return 'ca-app-pub-3940256099942544/2934735716';
-  }
+  static const _testIosBannerUnitId = 'ca-app-pub-3940256099942544/2934735716';
 
   // iOS 운영 ID — 2026-05-02 AdMob 콘솔 발급.
-  // Android 는 출시 안 함 (강대종 결정, Play 토큰 비용 절감) → test ID 유지.
-  // release 빌드여도 Android 코드 경로는 죽음 = test 광고만 노출 후 무영향.
-  static const _realAndroidBannerUnitId =
-      'ca-app-pub-3940256099942544/6300978111';
-  static const _realIosBannerUnitId =
-      'ca-app-pub-7025432711849670/6770114012';
+  static const _realIosBannerUnitId = 'ca-app-pub-7025432711849670/6770114012';
 }
 
 class AdaptiveBanner extends StatefulWidget {
@@ -60,6 +51,7 @@ class _AdaptiveBannerState extends State<AdaptiveBanner> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (!AdsService.isSupportedPlatform) return;
     if (_bannerAd == null) {
       _loadAd();
     }
@@ -68,8 +60,7 @@ class _AdaptiveBannerState extends State<AdaptiveBanner> {
   Future<void> _loadAd() async {
     final mq = MediaQuery.of(context);
     final width = mq.size.width.truncate();
-    final size =
-        await AdSize.getLargeAnchoredAdaptiveBannerAdSize(width);
+    final size = await AdSize.getLargeAnchoredAdaptiveBannerAdSize(width);
     if (size == null || !mounted) return;
 
     final ad = BannerAd(
@@ -105,6 +96,9 @@ class _AdaptiveBannerState extends State<AdaptiveBanner> {
 
   @override
   Widget build(BuildContext context) {
+    if (!AdsService.isSupportedPlatform) {
+      return const SizedBox.shrink();
+    }
     final size = _size;
     if (!_loaded || _bannerAd == null || size == null) {
       return const SizedBox.shrink();
