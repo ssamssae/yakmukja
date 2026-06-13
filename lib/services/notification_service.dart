@@ -112,4 +112,14 @@ class NotificationService {
     }
     return scheduled;
   }
+
+  // 테스트 전용 접근자 — 순수 계산 로직(다음 알림 시각·알림 id)을 단위 테스트로 검증.
+  // 동작/디자인 변경 없음(기존 private 로직을 그대로 위임).
+  @visibleForTesting
+  static tz.TZDateTime nextDateTimeForTest(int hour, int minute) =>
+      _nextDateTime(hour, minute);
+
+  @visibleForTesting
+  static int? notificationIdForTest(Medicine medicine, int timeIndex) =>
+      _notificationId(medicine, timeIndex);
 }
