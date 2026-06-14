@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hive/hive.dart';
+import 'package:hive_ce/hive.dart';
 import 'package:yakmukja/models/medicine.dart';
 
 // Medicine Hive 직렬화 라운드트립 + 박스 의존 로직(toggleTaken / pruneOldRecords).
@@ -114,5 +114,39 @@ void main() {
 
     m.pruneOldRecords();
     expect(m.takenRecords, [recent]);
+  });
+
+  // hive_ce 마이그레이션 데이터 보존 게이트 (T-260614-09): 여러 레코드를 쓰고
+  // 박스를 닫았다 다시 열어 레코드 수·내용이 그대로인지 검증. hive_ce 어댑터의
+  // 바이트 레이아웃이 기존 hive 와 동일하므로 기존 사용자 box 도 무손실로 열린다.
+  test('마이그레이션 보존: 다중 레코드 닫고 다시 열어도 수·내용 일치', () async {
+    var box = await Hive.openBox<Medicine>('meds');
+    await box.add(Medicine(
+      name: '혈압약',
+      dosage: '1알',
+      times: [DoseTime(hour: 9, minute: 0)],
+      memo: '아침',
+      createdAt: DateTime(2026, 6, 14, 9, 0),
+      takenRecords: ['2026-06-14_09:00'],
+    ));
+    await box.add(Medicine(
+      name: '비타민',
+      dosage: '1.5알',
+      times: [DoseTime(hour: 9, minute: 0), DoseTime(hour: 21, minute: 0)],
+      memo: '',
+      createdAt: DateTime(2026, 6, 14, 9, 5),
+    ));
+    await box.close();
+
+    box = await Hive.openBox<Medicine>('meds');
+    expect(box.length, 2);
+    final a = box.getAt(0)!;
+    final b = box.getAt(1)!;
+    expect(a.name, '혈압약');
+    expect(a.takenRecords, ['2026-06-14_09:00']);
+    expect(a.times.length, 1);
+    expect(b.name, '비타민');
+    expect(b.dosage, '1.5알');
+    expect(b.times.map((t) => t.hour).toList(), [9, 21]);
   });
 }
