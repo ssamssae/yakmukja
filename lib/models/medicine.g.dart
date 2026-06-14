@@ -8,7 +8,7 @@ part of 'medicine.dart';
 
 class MedicineAdapter extends TypeAdapter<Medicine> {
   @override
-  final int typeId = 0;
+  final typeId = 0;
 
   @override
   Medicine read(BinaryReader reader) {
@@ -57,7 +57,7 @@ class MedicineAdapter extends TypeAdapter<Medicine> {
 
 class DoseTimeAdapter extends TypeAdapter<DoseTime> {
   @override
-  final int typeId = 1;
+  final typeId = 1;
 
   @override
   DoseTime read(BinaryReader reader) {
@@ -66,8 +66,8 @@ class DoseTimeAdapter extends TypeAdapter<DoseTime> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return DoseTime(
-      hour: fields[0] as int,
-      minute: fields[1] as int,
+      hour: (fields[0] as num).toInt(),
+      minute: (fields[1] as num).toInt(),
     );
   }
 
