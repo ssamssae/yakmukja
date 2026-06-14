@@ -52,6 +52,7 @@ dev_dependencies:
   build_runner: ^2.15.0
   hive_ce_generator: ^1.11.1
   flutter_native_splash: ^2.4.4
+  flutter_launcher_icons: ^0.14.4
 
 # 네이티브 런치스크린 = 배경색만(로고 없음). 처음 뜨는 바 로고 화면을 빼고
 # '약먹자' 브랜드 Flutter SplashScreen 하나만 보이게 한다 (아니키 요청, T-260614-15).
@@ -60,6 +61,17 @@ flutter_native_splash:
   color: "#F7F8FA"
   android_12:
     color: "#F7F8FA"
+
+# 런처 아이콘 = design/icon_master.png (캡슐 + 초록 체크, 솔리드 그라데이션 배경).
+# 변경 후 재생성: dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  image_path: "design/icon_master.png"
+  web:
+    generate: true
+    image_path: "design/icon_master.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
