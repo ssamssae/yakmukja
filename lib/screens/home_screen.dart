@@ -115,36 +115,47 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                         ],
-                        // 다음 복용 카운트다운 (고정 높이)
+                        // 배너 슬롯 — 다음복용 카운트다운 / 모두복용 안내 / 없음 상태와
+                        // 무관하게 고정 높이(72)로 예약해 아래 약 리스트가 위아래로
+                        // 점프하지 않게 한다. 배너는 자연 높이 유지 + 상단 정렬.
+                        // (T-260614-11 (B) 레이아웃 점프 수정)
                         const SizedBox(height: 14),
-                        if (nextEntry != null)
-                          _CountdownBanner(entry: nextEntry)
-                        else if (entries.isNotEmpty && takenCount == entries.length)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            decoration: BoxDecoration(
-                              color: AppColors.success.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: AppColors.success.withValues(alpha: 0.25),
-                                width: 1,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.celebration_rounded, size: 20, color: AppColors.success),
-                                const SizedBox(width: 10),
-                                Text(
-                                  '오늘 약을 모두 복용했어요!',
-                                  style: TextStyle(
-                                    color: AppColors.success,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 14,
+                        SizedBox(
+                          height: 72,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (nextEntry != null)
+                                _CountdownBanner(entry: nextEntry)
+                              else if (entries.isNotEmpty && takenCount == entries.length)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.success.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: AppColors.success.withValues(alpha: 0.25),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.celebration_rounded, size: 20, color: AppColors.success),
+                                      const SizedBox(width: 10),
+                                      Text(
+                                        '오늘 약을 모두 복용했어요!',
+                                        style: TextStyle(
+                                          color: AppColors.success,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ],
-                            ),
+                            ],
                           ),
+                        ),
                       ],
                     ),
                   ),
