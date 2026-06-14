@@ -41,6 +41,7 @@ dependencies:
   timezone: ^0.11.0
   google_mobile_ads: ^9.0.0
   package_info_plus: ^8.1.2
+  url_launcher: ^6.3.2
   hive_ce: ^2.19.3
   hive_ce_flutter: ^2.3.4
 
