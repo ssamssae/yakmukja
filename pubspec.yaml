@@ -53,15 +53,13 @@ dev_dependencies:
   hive_ce_generator: ^1.11.1
   flutter_native_splash: ^2.4.4
 
-# 네이티브 런치스크린 = Flutter SplashScreen 과 동일한 로고/배경으로 통일해
-# "민무늬 네이티브 → 브랜드 Flutter" 2단계 splash 를 1개처럼 보이게 한다.
-# 변경 후 재생성: dart run flutter_native_splash:create  (T-260614-11 (A))
+# 네이티브 런치스크린 = 배경색만(로고 없음). 처음 뜨는 바 로고 화면을 빼고
+# '약먹자' 브랜드 Flutter SplashScreen 하나만 보이게 한다 (아니키 요청, T-260614-15).
+# 변경 후 재생성: dart run flutter_native_splash:create
 flutter_native_splash:
   color: "#F7F8FA"
-  image: assets/images/logo.png
   android_12:
     color: "#F7F8FA"
-    image: assets/images/logo.png
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
