@@ -1,73 +1,75 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-<dict>
-	<key>CFBundleDevelopmentRegion</key>
-	<string>$(DEVELOPMENT_LANGUAGE)</string>
-	<key>CFBundleDisplayName</key>
-	<string>약먹자</string>
-	<key>CFBundleExecutable</key>
-	<string>$(EXECUTABLE_NAME)</string>
-	<key>CFBundleIdentifier</key>
-	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-	<key>CFBundleInfoDictionaryVersion</key>
-	<string>6.0</string>
-	<key>CFBundleName</key>
-	<string>yakmukja</string>
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
-	<key>CFBundleShortVersionString</key>
-	<string>$(FLUTTER_BUILD_NAME)</string>
-	<key>CFBundleSignature</key>
-	<string>????</string>
-	<key>CFBundleVersion</key>
-	<string>$(FLUTTER_BUILD_NUMBER)</string>
-	<key>LSRequiresIPhoneOS</key>
-	<true/>
-	<key>UILaunchStoryboardName</key>
-	<string>LaunchScreen</string>
-	<key>UIApplicationSceneManifest</key>
 	<dict>
-		<key>UIApplicationSupportsMultipleScenes</key>
-		<false/>
-		<key>UISceneConfigurations</key>
+		<key>CFBundleDevelopmentRegion</key>
+		<string>$(DEVELOPMENT_LANGUAGE)</string>
+		<key>CFBundleDisplayName</key>
+		<string>약먹자</string>
+		<key>CFBundleExecutable</key>
+		<string>$(EXECUTABLE_NAME)</string>
+		<key>CFBundleIdentifier</key>
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+		<key>CFBundleInfoDictionaryVersion</key>
+		<string>6.0</string>
+		<key>CFBundleName</key>
+		<string>yakmukja</string>
+		<key>CFBundlePackageType</key>
+		<string>APPL</string>
+		<key>CFBundleShortVersionString</key>
+		<string>$(FLUTTER_BUILD_NAME)</string>
+		<key>CFBundleSignature</key>
+		<string>????</string>
+		<key>CFBundleVersion</key>
+		<string>$(FLUTTER_BUILD_NUMBER)</string>
+		<key>LSRequiresIPhoneOS</key>
+		<true/>
+		<key>UILaunchStoryboardName</key>
+		<string>LaunchScreen</string>
+		<key>UIApplicationSceneManifest</key>
 		<dict>
-			<key>UIWindowSceneSessionRoleApplication</key>
-			<array>
-				<dict>
-					<key>UISceneClassName</key>
-					<string>UIWindowScene</string>
-					<key>UISceneDelegateClassName</key>
-					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
-					<key>UISceneConfigurationName</key>
-					<string>flutter</string>
-					<key>UISceneStoryboardFile</key>
-					<string>Main</string>
-				</dict>
-			</array>
+			<key>UIApplicationSupportsMultipleScenes</key>
+			<false/>
+			<key>UISceneConfigurations</key>
+			<dict>
+				<key>UIWindowSceneSessionRoleApplication</key>
+				<array>
+					<dict>
+						<key>UISceneClassName</key>
+						<string>UIWindowScene</string>
+						<key>UISceneDelegateClassName</key>
+						<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+						<key>UISceneConfigurationName</key>
+						<string>flutter</string>
+						<key>UISceneStoryboardFile</key>
+						<string>Main</string>
+					</dict>
+				</array>
+			</dict>
 		</dict>
+		<key>UISupportedInterfaceOrientations</key>
+		<array>
+			<string>UIInterfaceOrientationPortrait</string>
+		</array>
+		<key>UISupportedInterfaceOrientations~ipad</key>
+		<array>
+			<string>UIInterfaceOrientationPortrait</string>
+		</array>
+		<key>CADisableMinimumFrameDurationOnPhone</key>
+		<false/>
+		<key>UIApplicationSupportsIndirectInputEvents</key>
+		<true/>
+		<!-- iPad 멀티태스킹(분할 화면) 미지원 선언 → Portrait 만 두고도 App Store 검증 통과 -->
+		<key>UIRequiresFullScreen</key>
+		<true/>
+		<!-- AdMob App ID — 약먹자 iOS 운영 (2026-05-02 발급). -->
+		<key>GADApplicationIdentifier</key>
+		<string>ca-app-pub-7025432711849670~1525526197</string>
+		<!-- Export Compliance: 표준 암호화(HTTPS/TLS)만 사용, 자체 알고리즘 없음. -->
+		<key>ITSAppUsesNonExemptEncryption</key>
+		<false/>
+		<!-- ATT 키 제거 (2026-05-12 1.0.2+5): ASC App Privacy 미선언 상태에서 binary ATT 신호 → BINARY_INDICATES_APP_TRACKS_USERS 409. AdMob non-personalized 광고만 사용. personalized 광고는 v1.0.3+ 에서 ATT UX + ASC Privacy 선언 + 코드 동작 세트로 추가. -->
+		<key>UIStatusBarHidden</key>
+		<false/>
 	</dict>
-	<key>UISupportedInterfaceOrientations</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-	</array>
-	<key>UISupportedInterfaceOrientations~ipad</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-	</array>
-	<key>CADisableMinimumFrameDurationOnPhone</key>
-	<false/>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
-	<!-- iPad 멀티태스킹(분할 화면) 미지원 선언 → Portrait 만 두고도 App Store 검증 통과 -->
-	<key>UIRequiresFullScreen</key>
-	<true/>
-	<!-- AdMob App ID — 약먹자 iOS 운영 (2026-05-02 발급). -->
-	<key>GADApplicationIdentifier</key>
-	<string>ca-app-pub-7025432711849670~1525526197</string>
-	<!-- Export Compliance: 표준 암호화(HTTPS/TLS)만 사용, 자체 알고리즘 없음. -->
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
-	<!-- ATT 키 제거 (2026-05-12 1.0.2+5): ASC App Privacy 미선언 상태에서 binary ATT 신호 → BINARY_INDICATES_APP_TRACKS_USERS 409. AdMob non-personalized 광고만 사용. personalized 광고는 v1.0.3+ 에서 ATT UX + ASC Privacy 선언 + 코드 동작 세트로 추가. -->
-</dict>
 </plist>
