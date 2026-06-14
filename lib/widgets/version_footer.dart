@@ -14,7 +14,7 @@ class VersionFooter extends StatelessWidget {
       future: PackageInfo.fromPlatform(),
       builder: (context, snapshot) {
         final version = snapshot.data?.version ?? '';
-        final label = version.isEmpty ? '강대종' : 'v$version · 강대종';
+        final label = version.isEmpty ? '강대종 마이너스베타스튜디오' : 'v$version · 강대종 마이너스베타스튜디오';
         return Padding(
           padding: const EdgeInsets.only(top: 4, bottom: 4),
           child: Text(
