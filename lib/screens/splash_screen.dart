@@ -12,22 +12,13 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _fadeIn;
-
+class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    );
-    _fadeIn = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
-    _controller.forward();
-
-    // 총 체류 1.5초 (더치페이 스타일 페이드아웃)
+    // 네이티브 런치스크린(flutter_native_splash, 동일 로고/배경)에서 이어받으므로
+    // 진입 fade-in 없이 즉시 동일 화면을 그려 handoff 깜빡임을 막는다.
+    // 총 체류 1.5초 후 홈으로 페이드아웃. (T-260614-11 (A))
     Future.delayed(const Duration(milliseconds: 1500), () {
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
@@ -43,70 +34,61 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: Center(
-        child: FadeTransition(
-          opacity: _fadeIn,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(28),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.25),
-                      blurRadius: 30,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Image.asset(
-                  SplashScreen.logoAssetPath,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stack) => Container(
-                    color: AppColors.primarySoft,
-                    child: const Icon(
-                      Icons.medication_rounded,
-                      size: 72,
-                      color: AppColors.primary,
-                    ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.25),
+                    blurRadius: 30,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Image.asset(
+                SplashScreen.logoAssetPath,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stack) => Container(
+                  color: AppColors.primarySoft,
+                  child: const Icon(
+                    Icons.medication_rounded,
+                    size: 72,
+                    color: AppColors.primary,
                   ),
                 ),
               ),
-              const SizedBox(height: 28),
-              const Text(
-                '약먹자',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textStrong,
-                  letterSpacing: -0.5,
-                ),
+            ),
+            const SizedBox(height: 28),
+            const Text(
+              '약먹자',
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textStrong,
+                letterSpacing: -0.5,
               ),
-              const SizedBox(height: 8),
-              const Text(
-                '건강한 하루의 시작',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.primaryDark,
-                  letterSpacing: 1.0,
-                ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              '건강한 하루의 시작',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primaryDark,
+                letterSpacing: 1.0,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
