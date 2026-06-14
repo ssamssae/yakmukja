@@ -9,6 +9,7 @@ import '../services/ads_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/version_footer.dart';
 import 'medicine_edit_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -63,12 +64,29 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          _todayString(),
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            color: theme.colorScheme.outline,
-                            letterSpacing: 0.3,
-                          ),
+                        // 날짜(좌) + 설정 진입 아이콘(우상단). (T-260614-14)
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _todayString(),
+                                style: theme.textTheme.labelLarge?.copyWith(
+                                  color: theme.colorScheme.outline,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.settings_outlined),
+                              color: theme.colorScheme.outline,
+                              tooltip: '설정',
+                              onPressed: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const SettingsScreen(),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 6),
                         Text(
