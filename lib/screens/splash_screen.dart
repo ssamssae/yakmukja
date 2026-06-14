@@ -35,23 +35,60 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 네이티브 런치스크린(flutter_native_splash)과 완전히 동일하게 로고만
-    // 64pt, 동일 배경(#F7F8FA)으로 그려 네이티브→Flutter handoff 를 한 화면처럼
-    // 이어지게 한다. 둥근 박스/그림자/타이틀 텍스트를 두면 네이티브와 달라
-    // "splash 2개"로 보이므로 제거. (T-260614-15)
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: Center(
-        child: Image.asset(
-          SplashScreen.logoAssetPath,
-          width: 64,
-          height: 64,
-          fit: BoxFit.contain,
-          errorBuilder: (context, error, stack) => const Icon(
-            Icons.medication_rounded,
-            size: 64,
-            color: AppColors.primary,
-          ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.25),
+                    blurRadius: 30,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Image.asset(
+                SplashScreen.logoAssetPath,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stack) => Container(
+                  color: AppColors.primarySoft,
+                  child: const Icon(
+                    Icons.medication_rounded,
+                    size: 72,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 28),
+            const Text(
+              '약먹자',
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textStrong,
+                letterSpacing: -0.5,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              '건강한 하루의 시작',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primaryDark,
+                letterSpacing: 1.0,
+              ),
+            ),
+          ],
         ),
       ),
     );
