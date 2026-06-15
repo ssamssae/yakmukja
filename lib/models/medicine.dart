@@ -26,7 +26,8 @@ class Medicine extends HiveObject {
   /// 복용 요일 (ISO 8601: 1=월 … 7=일). 기본 = 매일([1..7]).
   /// 기존(필드 추가 전) 저장 데이터는 이 필드가 비어/null 로 역직렬화되는데,
   /// 그 경우 "매일"로 간주한다(activeWeekdays 게터 참조).
-  @HiveField(6)
+  /// ⚠️ field 6 은 design-B(휴지통 deletedAt) 가 선점 → 충돌 회피로 7 사용.
+  @HiveField(7)
   List<int> weekdays;
 
   Medicine({

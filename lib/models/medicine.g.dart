@@ -23,7 +23,7 @@ class MedicineAdapter extends TypeAdapter<Medicine> {
       memo: fields[3] as String,
       createdAt: fields[4] as DateTime,
       takenRecords: (fields[5] as List?)?.cast<String>(),
-      weekdays: (fields[6] as List?)?.cast<int>(),
+      weekdays: (fields[7] as List?)?.cast<int>(),
     );
   }
 
@@ -43,7 +43,7 @@ class MedicineAdapter extends TypeAdapter<Medicine> {
       ..write(obj.createdAt)
       ..writeByte(5)
       ..write(obj.takenRecords)
-      ..writeByte(6)
+      ..writeByte(7)
       ..write(obj.weekdays);
   }
 
