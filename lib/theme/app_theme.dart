@@ -5,24 +5,32 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  // 베이스
-  static const bg = Color(0xFFF7F8FA); // scaffold 오프화이트
+  // 베이스 (목업 클린 클리니컬 톤)
+  static const bg = Color(0xFFF2F4F6); // scaffold 오프화이트
   static const surface = Color(0xFFFFFFFF); // 카드
-  static const shadow = Color(0x14000000); // black 8% — 옅은 카드 그림자
+  static const shadow = Color(0x0A000000); // black 4% — 옅은 카드 그림자
 
-  // 포인트 (약먹자 = 틸/민트)
-  static const primary = Color(0xFF14B8A6);
-  static const primaryDark = Color(0xFF0F9488); // 텍스트/대비용
+  // 포인트 (약먹자 = 그린, 새 앱 아이콘과 통일)
+  static const primary = Color(0xFF22C55E);
+  static const primaryDark = Color(0xFF16A34A); // 텍스트/대비용
   static Color get primarySoft => primary.withValues(alpha: 0.12);
 
-  // 텍스트
-  static const textStrong = Color(0xFF1A1D24);
+  // 텍스트 (목업 클린 클리니컬 톤)
+  static const textStrong = Color(0xFF191F28);
   static const textBody = Color(0xFF4B5563);
-  static const textFaint = Color(0xFF9CA3AF);
+  static const textFaint = Color(0xFF8B95A1);
 
-  // 상태 (완료 = green, 포인트 틸과 의미 구분)
+  // 상태 (완료 = green, primary 와 동일 계열로 통일)
   static const success = Color(0xFF22C55E);
   static const danger = Color(0xFFEF4444);
+
+  // 클린 클리니컬 토큰 (목업 /tmp/yak-mockup-B.html)
+  static const line = Color(0xFFEAEDF0); // 리스트 행 구분선
+  static const greenSoft = Color(0xFFECFBF1); // 그린 아이콘칩 배경
+  static const trackGrey = Color(0xFFE5E8EB); // 진행바 트랙
+  static const chipGrey = Color(0xFFF2F4F6); // 대기 아이콘칩 배경
+  static const accent = Color(0xFF3182F6); // "예정" 배지 텍스트
+  static const accentSoft = Color(0xFFEAF2FE); // "예정" 배지 배경
 }
 
 /// 간격 스케일 (4·8·12·16·20·24)
@@ -38,7 +46,7 @@ class AppSpace {
 
 class AppRadius {
   AppRadius._();
-  static const card = 20.0;
+  static const card = 22.0;
   static const button = 14.0;
   static const input = 12.0;
   static const chip = 12.0;
@@ -114,7 +122,7 @@ BoxDecoration appCardDecoration({Color? color, BorderRadius? radius}) {
     color: color ?? AppColors.surface,
     borderRadius: radius ?? BorderRadius.circular(AppRadius.card),
     boxShadow: const [
-      BoxShadow(color: AppColors.shadow, blurRadius: 16, offset: Offset(0, 4)),
+      BoxShadow(color: AppColors.shadow, blurRadius: 10, offset: Offset(0, 2)),
     ],
   );
 }
