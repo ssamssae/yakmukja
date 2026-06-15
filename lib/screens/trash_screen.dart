@@ -149,7 +149,7 @@ class TrashScreen extends StatelessWidget {
                 child: ListView.separated(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                   itemCount: trashed.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (context, i) {
                     final m = trashed[i];
                     return Card(
