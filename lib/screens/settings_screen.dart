@@ -5,6 +5,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/app_review_service.dart';
+import '../services/iap_service.dart';
 import '../theme/app_theme.dart';
 import 'policy_screen.dart';
 import 'trash_screen.dart';
@@ -60,12 +61,6 @@ class SettingsScreen extends StatelessWidget {
           '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
       .join('&');
 
-  void _comingSoon(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('상품을 준비 중이에요. 조금만 기다려 주세요.')),
-    );
-  }
-
   void _push(BuildContext context, Widget screen) {
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
   }
@@ -86,16 +81,28 @@ class SettingsScreen extends StatelessWidget {
               icon: Icons.feedback_outlined,
               label: '피드백 보내기',
               onTap: () => _sendFeedback(context)),
-          _tile(context,
-              icon: Icons.block_outlined,
-              label: '광고 제거',
-              sub: '상품 준비중',
-              iconColor: AppColors.primary,
-              onTap: () => _comingSoon(context)),
+          ValueListenableBuilder<bool>(
+            valueListenable: IapService.adsRemoved,
+            builder: (context, removed, _) {
+              if (removed) return const SizedBox.shrink();
+              return _tile(context,
+                  icon: Icons.block_outlined,
+                  label: '광고 제거',
+                  iconColor: AppColors.primary,
+                  onTap: IapService.buyRemoveAds);
+            },
+          ),
           _tile(context,
               icon: Icons.restore,
               label: '구매 복원',
-              onTap: () => _comingSoon(context)),
+              onTap: () async {
+                await IapService.restorePurchases();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('구매 내역을 복원했습니다')),
+                  );
+                }
+              }),
           _tile(context,
               icon: Icons.delete_outline,
               label: '휴지통',
