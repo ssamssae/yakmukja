@@ -44,6 +44,7 @@ dependencies:
   url_launcher: ^6.3.2
   hive_ce: ^2.19.3
   hive_ce_flutter: ^2.3.4
+  in_app_review: ^2.0.10
 
 dev_dependencies:
   flutter_test:
@@ -85,6 +86,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - docs/legal/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

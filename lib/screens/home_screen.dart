@@ -137,6 +137,7 @@ class HomeScreen extends StatelessWidget {
   List<_Entry> _todayEntries(Box<Medicine> box) {
     final list = <_Entry>[];
     for (final m in box.values) {
+      if (m.deletedAt != null) continue; // 휴지통 약은 목록 제외 (T-260614-12)
       for (final t in m.times) {
         list.add(_Entry(medicine: m, time: t));
       }
