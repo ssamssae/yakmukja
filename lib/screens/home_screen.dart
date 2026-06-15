@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 
@@ -11,30 +9,8 @@ import '../widgets/version_footer.dart';
 import 'medicine_edit_screen.dart';
 import 'settings_screen.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  late Timer _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    // 매초 리빌드하여 카운트다운 갱신
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer.cancel();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +24,6 @@ class _HomeScreenState extends State<HomeScreen> {
           final entries = _todayEntries(box);
           final grouped = _groupByPeriod(entries);
           final takenCount = entries.where((e) => e.medicine.isTaken(e.time)).length;
-          final nextEntry = _nextUntaken(entries);
 
           return CustomScrollView(
             // 빈 상태에서 오버스크롤로 "등록된 약이 없어요" 가 화면 밖으로 밀려 나가는 이슈 방지
@@ -115,47 +90,35 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                         ],
-                        // 배너 슬롯 — 다음복용 카운트다운 / 모두복용 안내 / 없음 상태와
-                        // 무관하게 고정 높이(72)로 예약해 아래 약 리스트가 위아래로
-                        // 점프하지 않게 한다. 배너는 자연 높이 유지 + 상단 정렬.
-                        // (T-260614-11 (B) 레이아웃 점프 수정)
-                        const SizedBox(height: 14),
-                        SizedBox(
-                          height: 72,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              if (nextEntry != null)
-                                _CountdownBanner(entry: nextEntry)
-                              else if (entries.isNotEmpty && takenCount == entries.length)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.success.withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(
-                                      color: AppColors.success.withValues(alpha: 0.25),
-                                      width: 1,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(Icons.celebration_rounded, size: 20, color: AppColors.success),
-                                      const SizedBox(width: 10),
-                                      Text(
-                                        '오늘 약을 모두 복용했어요!',
-                                        style: TextStyle(
-                                          color: AppColors.success,
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                    ],
+                        // 모두 복용 완료 시에만 축하 배너 (다음 복용 카운트다운 제거 — T-260614-12)
+                        if (entries.isNotEmpty && takenCount == entries.length) ...[
+                          const SizedBox(height: 14),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            decoration: BoxDecoration(
+                              color: AppColors.success.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: AppColors.success.withValues(alpha: 0.25),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.celebration_rounded, size: 20, color: AppColors.success),
+                                const SizedBox(width: 10),
+                                Text(
+                                  '오늘 약을 모두 복용했어요!',
+                                  style: TextStyle(
+                                    color: AppColors.success,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 14,
                                   ),
                                 ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ),
@@ -195,28 +158,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
-  }
-
-  /// 아직 안 먹은 것 중 가장 가까운 다음 복용
-  _Entry? _nextUntaken(List<_Entry> entries) {
-    final now = DateTime.now();
-    final nowMin = now.hour * 60 + now.minute;
-    _Entry? best;
-    int bestDiff = 999999;
-
-    for (final e in entries) {
-      if (e.medicine.isTaken(e.time)) continue;
-      final eMin = e.time.hour * 60 + e.time.minute;
-      // 오늘 남은 시간 기준
-      int diff = eMin - nowMin;
-      if (diff < -1) continue; // 이미 지나간 시간은 스킵 (1분 여유)
-      if (diff < 0) diff = 0;
-      if (diff < bestDiff) {
-        bestDiff = diff;
-        best = e;
-      }
-    }
-    return best;
   }
 
   String _todayString() {
@@ -337,102 +278,6 @@ class _Entry {
   final Medicine medicine;
   final DoseTime time;
   _Entry({required this.medicine, required this.time});
-}
-
-class _CountdownBanner extends StatelessWidget {
-  final _Entry entry;
-  const _CountdownBanner({required this.entry});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final now = DateTime.now();
-    final target = DateTime(now.year, now.month, now.day, entry.time.hour, entry.time.minute);
-    final diff = target.difference(now);
-
-    String countdown;
-    if (diff.isNegative) {
-      countdown = '지금 드세요!';
-    } else {
-      final h = diff.inHours;
-      final m = diff.inMinutes % 60;
-      final s = diff.inSeconds % 60;
-      if (h > 0) {
-        countdown = '$h시간 $m분 후';
-      } else if (m > 0) {
-        countdown = '$m분 $s초 후';
-      } else {
-        countdown = '$s초 후';
-      }
-    }
-
-    final urgent = diff.isNegative || diff.inMinutes < 30;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: AppColors.primary.withValues(alpha: urgent ? 0.45 : 0.2),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.timer_outlined, size: 18, color: AppColors.primary),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '다음 복용',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.outline,
-                    letterSpacing: 0.4,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                RichText(
-                  overflow: TextOverflow.ellipsis,
-                  text: TextSpan(
-                    style: theme.textTheme.bodyMedium,
-                    children: [
-                      TextSpan(
-                        text: entry.medicine.name,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      TextSpan(
-                        text: '  ${entry.medicine.dosage}',
-                        style: TextStyle(color: theme.colorScheme.outline),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            countdown,
-            style: const TextStyle(
-              color: AppColors.primary,
-              fontWeight: FontWeight.w800,
-              fontSize: 15,
-              letterSpacing: -0.2,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _MedicineCard extends StatelessWidget {
