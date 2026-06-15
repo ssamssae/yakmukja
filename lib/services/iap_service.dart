@@ -41,6 +41,12 @@ class IapService {
     await _iap.restorePurchases();
   }
 
+  /// 구매 복원. 기기 변경/재설치 후 사용자가 직접 호출할 수 있는 public 래퍼.
+  static Future<void> restorePurchases() async {
+    if (!await _iap.isAvailable()) return;
+    await _iap.restorePurchases();
+  }
+
   /// 광고 제거 구매 시작. 이미 제거됐으면 no-op.
   static Future<void> buyRemoveAds() async {
     if (adsRemoved.value) return;
