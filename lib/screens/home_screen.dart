@@ -362,25 +362,27 @@ class _MedicineCard extends StatelessWidget {
                               color: theme.colorScheme.outline,
                             ),
                           ),
-                          // 매일이 아닌 약만 요일 라벨 표시(매일은 기본이라 생략).
-                          if (!medicine.isDaily) ...[
-                            const SizedBox(width: 8),
-                            Icon(
-                              Icons.event_repeat_outlined,
-                              size: 12,
-                              color: theme.colorScheme.outline,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              medicine.weekdayLabel,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.outline,
-                              ),
-                            ),
-                          ],
                         ],
                       ),
                     ],
+                    // 요일 정보는 모든 약 카드에 항상 표시(매일→"매일", 특정요일→"월·수·금").
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.event_repeat_outlined,
+                          size: 12,
+                          color: theme.colorScheme.outline,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          medicine.weekdayLabel,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.outline,
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
