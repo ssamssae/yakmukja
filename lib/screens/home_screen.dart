@@ -3,11 +3,8 @@ import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 
 import '../main.dart';
 import '../models/medicine.dart';
-import '../services/ads_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/version_footer.dart';
 import 'medicine_edit_screen.dart';
-import 'settings_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -39,29 +36,13 @@ class HomeScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // 날짜(좌) + 설정 진입 아이콘(우상단). (T-260614-14)
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                _todayString(),
-                                style: theme.textTheme.labelLarge?.copyWith(
-                                  color: theme.colorScheme.outline,
-                                  letterSpacing: 0.3,
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.settings_outlined),
-                              color: theme.colorScheme.outline,
-                              tooltip: '설정',
-                              onPressed: () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const SettingsScreen(),
-                                ),
-                              ),
-                            ),
-                          ],
+                        // 날짜 (설정은 하단 탭으로 이동 — 우상단 아이콘 제거, T-260614-12)
+                        Text(
+                          _todayString(),
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: theme.colorScheme.outline,
+                            letterSpacing: 0.3,
+                          ),
                         ),
                         const SizedBox(height: 6),
                         Text(
@@ -143,28 +124,7 @@ class HomeScreen extends StatelessWidget {
           );
         },
       ),
-      bottomNavigationBar: const Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          VersionFooter(),
-          AdaptiveBanner(),
-        ],
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      // Transform.translate 로 올리면 Scaffold FAB 슬롯이 원위치라 탭이 안 잡힘.
-      // Padding 으로 슬롯 자체를 키워서 시각 위치 유지 + 히트테스트 정상화.
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 40),
-        child: FloatingActionButton.extended(
-          onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const MedicineEditScreen()),
-            );
-          },
-          icon: const Icon(Icons.add_rounded),
-          label: const Text('약 등록'),
-        ),
-      ),
+      // 푸터(버전·배너)·탭바는 MainShell 이 소유. 떠있는 약등록 FAB 제거 (T-260614-12)
     );
   }
 
