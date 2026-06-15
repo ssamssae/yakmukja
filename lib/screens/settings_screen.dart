@@ -17,7 +17,7 @@ class SettingsScreen extends StatelessWidget {
   static const String feedbackEmail = 'minusbetastudio@gmail.com';
 
   Future<void> _rate(BuildContext context) async {
-    final ok = await AppReviewService.requestReview();
+    final ok = await AppReviewService.openReview();
     if (!ok && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('지금은 평가를 열 수 없어요')),
