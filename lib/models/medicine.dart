@@ -27,6 +27,13 @@ class Medicine extends HiveObject {
   @HiveField(6)
   DateTime? deletedAt;
 
+  /// 복용 요일 (ISO 8601: 1=월 … 7=일). 기본 = 매일([1..7]).
+  /// 기존(필드 추가 전) 저장 데이터는 이 필드가 비어/null 로 역직렬화되는데,
+  /// 그 경우 "매일"로 간주한다(activeWeekdays 게터 참조).
+  /// ⚠️ field 6 은 design-B(휴지통 deletedAt) 가 선점 → 충돌 회피로 7 사용.
+  @HiveField(7)
+  List<int> weekdays;
+
   Medicine({
     required this.name,
     required this.dosage,
@@ -35,7 +42,31 @@ class Medicine extends HiveObject {
     required this.createdAt,
     List<String>? takenRecords,
     this.deletedAt,
-  }) : takenRecords = takenRecords ?? [];
+    List<int>? weekdays,
+  })  : takenRecords = takenRecords ?? [],
+        weekdays = weekdays ?? const [1, 2, 3, 4, 5, 6, 7];
+
+  /// 매일을 뜻하는 전체 요일 집합.
+  static const allWeekdays = [1, 2, 3, 4, 5, 6, 7];
+
+  /// 마이그레이션 안전 게터 — weekdays 가 비어있으면(구버전 데이터) "매일"로 본다.
+  /// 알림/홈 필터는 항상 이 게터를 사용한다.
+  List<int> get activeWeekdays =>
+      weekdays.isEmpty ? allWeekdays : weekdays;
+
+  /// 매일 복용 여부(전체 7요일 선택).
+  bool get isDaily => activeWeekdays.length == 7;
+
+  /// 지정한 ISO 요일(1=월 … 7=일)에 복용하는 약인지.
+  bool isOnWeekday(int isoWeekday) => activeWeekdays.contains(isoWeekday);
+
+  /// 요일 라벨 — 매일이면 "매일", 아니면 "월·수·금" 형태(월→일 순서).
+  String get weekdayLabel {
+    if (isDaily) return '매일';
+    const names = ['월', '화', '수', '목', '금', '토', '일'];
+    final sorted = [...activeWeekdays]..sort();
+    return sorted.map((d) => names[d - 1]).join('·');
+  }
 
   /// 휴지통 보관 기간 — 이 기간이 지나면 자동 영구삭제된다.
   static const trashRetention = Duration(days: 30);

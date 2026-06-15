@@ -155,9 +155,12 @@ class HomeScreen extends StatelessWidget {
   }
 
   List<_Entry> _todayEntries(Box<Medicine> box) {
+    final today = DateTime.now().weekday; // ISO 1=월 … 7=일
     final list = <_Entry>[];
     for (final m in box.values) {
       if (m.deletedAt != null) continue; // 휴지통 약은 목록 제외 (T-260614-12)
+      // 오늘 요일에 복용하는 약만 노출. 매일 약은 항상 포함.
+      if (!m.isOnWeekday(today)) continue;
       for (final t in m.times) {
         list.add(_Entry(medicine: m, time: t));
       }
@@ -359,6 +362,22 @@ class _MedicineCard extends StatelessWidget {
                               color: theme.colorScheme.outline,
                             ),
                           ),
+                          // 매일이 아닌 약만 요일 라벨 표시(매일은 기본이라 생략).
+                          if (!medicine.isDaily) ...[
+                            const SizedBox(width: 8),
+                            Icon(
+                              Icons.event_repeat_outlined,
+                              size: 12,
+                              color: theme.colorScheme.outline,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              medicine.weekdayLabel,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.outline,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ],
