@@ -58,7 +58,7 @@ void main() {
       if (tmp.existsSync()) tmp.deleteSync(recursive: true);
     });
 
-    test('박스 저장(key=int) 시 key*100+timeIndex, 복용시간마다 고유', () async {
+    test('박스 저장(key=int) 시 key*1000+timeIndex*10+요일슬롯, 시간마다 고유', () async {
       final box = await Hive.openBox<Medicine>('meds');
       final m = Medicine(
         name: 'A',
@@ -74,13 +74,35 @@ void main() {
       await box.add(m);
       final key = m.key as int;
 
-      final ids = [
+      // 매일 슬롯(0) — 시간마다 고유.
+      final dailyIds = [
         NotificationService.notificationIdForTest(m, 0),
         NotificationService.notificationIdForTest(m, 1),
         NotificationService.notificationIdForTest(m, 2),
       ];
-      expect(ids, [key * 100 + 0, key * 100 + 1, key * 100 + 2]);
-      expect(ids.toSet().length, 3, reason: '복용시간마다 id 가 고유해야 함');
+      expect(dailyIds, [key * 1000 + 0, key * 1000 + 10, key * 1000 + 20]);
+      expect(dailyIds.toSet().length, 3, reason: '복용시간마다 id 가 고유해야 함');
+    });
+
+    test('(시간 × 요일) 조합마다 id 가 모두 고유', () async {
+      final box = await Hive.openBox<Medicine>('meds');
+      final m = Medicine(
+        name: 'A',
+        dosage: '1',
+        times: [DoseTime(hour: 8, minute: 0), DoseTime(hour: 20, minute: 0)],
+        memo: '',
+        createdAt: DateTime(2026, 1, 1),
+      );
+      await box.add(m);
+
+      final ids = <int>{};
+      for (int i = 0; i < 2; i++) {
+        for (int wd = 0; wd <= 7; wd++) {
+          ids.add(NotificationService.notificationIdForTest(m, i, wd)!);
+        }
+      }
+      // 2 시간 × 8 슬롯(0=매일, 1..7=요일) = 16개, 전부 고유.
+      expect(ids.length, 16);
     });
 
     test('박스 저장 전(key=null)이면 null 반환해 스케줄 생략', () {
@@ -92,6 +114,21 @@ void main() {
         createdAt: DateTime(2026, 1, 1),
       );
       expect(NotificationService.notificationIdForTest(m, 0), isNull);
+    });
+  });
+
+  group('nextDateTimeOnWeekday — 특정 요일 다음 발생', () {
+    test('결과 요일이 지정 ISO 요일과 일치하고 시:분 유지, 현재 이후', () {
+      final now = tz.TZDateTime.now(tz.local);
+      for (int wd = 1; wd <= 7; wd++) {
+        final r = NotificationService.nextDateTimeOnWeekdayForTest(wd, 9, 30);
+        expect(r.weekday, wd, reason: '결과 요일이 지정 요일이어야 함');
+        expect(r.hour, 9);
+        expect(r.minute, 30);
+        expect(r.isBefore(now), isFalse);
+        // 같은 요일/시각은 최대 7일 안에 다시 온다.
+        expect(r.difference(now).inDays < 7, isTrue);
+      }
     });
   });
 }

@@ -125,4 +125,47 @@ void main() {
       expect(m.isTaken(t20), isFalse);
     });
   });
+
+  group('Medicine 복용 요일 (weekdays)', () {
+    Medicine make({List<int>? weekdays}) => Medicine(
+          name: 'A',
+          dosage: '1',
+          times: [DoseTime(hour: 8, minute: 0)],
+          memo: '',
+          createdAt: DateTime(2026, 1, 1),
+          weekdays: weekdays,
+        );
+
+    test('weekdays 미지정 시 기본 = 매일([1..7])', () {
+      final m = make();
+      expect(m.weekdays, [1, 2, 3, 4, 5, 6, 7]);
+      expect(m.activeWeekdays, [1, 2, 3, 4, 5, 6, 7]);
+      expect(m.isDaily, isTrue);
+    });
+
+    test('마이그레이션: weekdays 빈값(구버전 데이터)이면 매일로 간주', () {
+      final m = make(weekdays: []);
+      // 저장된 raw 값은 빈 리스트지만 activeWeekdays 는 매일로 정규화.
+      expect(m.weekdays, isEmpty);
+      expect(m.activeWeekdays, [1, 2, 3, 4, 5, 6, 7]);
+      expect(m.isDaily, isTrue);
+      expect(m.isOnWeekday(3), isTrue);
+    });
+
+    test('특정 요일만 선택 시 isDaily=false, 해당 요일만 포함', () {
+      final m = make(weekdays: [1, 3, 5]); // 월·수·금
+      expect(m.isDaily, isFalse);
+      expect(m.isOnWeekday(1), isTrue);
+      expect(m.isOnWeekday(3), isTrue);
+      expect(m.isOnWeekday(5), isTrue);
+      expect(m.isOnWeekday(2), isFalse);
+      expect(m.isOnWeekday(7), isFalse);
+    });
+
+    test('weekdayLabel: 매일이면 "매일", 아니면 월→일 정렬 라벨', () {
+      expect(make().weekdayLabel, '매일');
+      expect(make(weekdays: [5, 1, 3]).weekdayLabel, '월·수·금');
+      expect(make(weekdays: [6, 7]).weekdayLabel, '토·일');
+    });
+  });
 }
