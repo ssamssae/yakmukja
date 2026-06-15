@@ -8,13 +8,13 @@ import 'iap_service.dart';
 
 /// AdMob 초기화 + 광고 단위 ID 관리.
 ///
-/// 정책: 약먹자는 iOS-only 출시 상태를 유지한다. AdMob 도 iOS 운영 배너만
-/// 활성화하고, Android 는 Play 출시 보류 상태라 SDK init/banner load 를 하지 않는다.
+/// 정책: iOS·Android 양 플랫폼 운영 배너를 활성화한다. (2026-06-15 Android AdMob
+/// 앱/배너 유닛 발급 + Play 프로덕션 제출과 함께 Android 광고 연결.)
 class AdsService {
   static bool _initialized = false;
   static Future<void>? _initializing;
 
-  static bool get isSupportedPlatform => Platform.isIOS;
+  static bool get isSupportedPlatform => Platform.isIOS || Platform.isAndroid;
 
   static Future<void> init() {
     if (!isSupportedPlatform) return Future<void>.value();
@@ -38,15 +38,24 @@ class AdsService {
   }
 
   static String get bannerAdUnitId {
-    if (kDebugMode) return _testIosBannerUnitId;
+    if (kDebugMode) {
+      return Platform.isAndroid ? _testAndroidBannerUnitId : _testIosBannerUnitId;
+    }
     if (Platform.isIOS) return _realIosBannerUnitId;
+    if (Platform.isAndroid) return _realAndroidBannerUnitId;
     return _testIosBannerUnitId;
   }
 
   static const _testIosBannerUnitId = 'ca-app-pub-3940256099942544/2934735716';
+  static const _testAndroidBannerUnitId =
+      'ca-app-pub-3940256099942544/6300978111';
 
   // iOS 운영 ID — 2026-05-02 AdMob 콘솔 발급.
   static const _realIosBannerUnitId = 'ca-app-pub-7025432711849670/6770114012';
+
+  // Android 운영 ID — 2026-06-15 AdMob 콘솔 발급 (앱 ca-app-pub-...~1874025882).
+  static const _realAndroidBannerUnitId =
+      'ca-app-pub-7025432711849670/2883855221';
 }
 
 class AdaptiveBanner extends StatefulWidget {
