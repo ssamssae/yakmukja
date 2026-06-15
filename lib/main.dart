@@ -6,6 +6,7 @@ import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 import 'models/medicine.dart';
 import 'screens/splash_screen.dart';
 import 'services/ads_service.dart';
+import 'services/iap_service.dart';
 import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
 
@@ -60,6 +61,7 @@ void _startDeferredColdStartWork() {
         'NotificationService.init',
         NotificationService.init,
       );
+      await _runDeferredStartupStep('IapService.init', IapService.init);
       await _runDeferredStartupStep('AdsService.init', AdsService.init);
     }),
   );

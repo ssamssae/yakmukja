@@ -6,6 +6,7 @@ import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 import '../main.dart';
 import '../models/medicine.dart';
 import '../services/ads_service.dart';
+import '../services/iap_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/version_footer.dart';
 import 'medicine_edit_screen.dart';
@@ -75,6 +76,19 @@ class _HomeScreenState extends State<HomeScreen> {
                                   letterSpacing: 0.3,
                                 ),
                               ),
+                            ),
+                            // 광고 제거 구매 버튼 — 이미 제거됐으면 숨김.
+                            ValueListenableBuilder<bool>(
+                              valueListenable: IapService.adsRemoved,
+                              builder: (context, removed, _) {
+                                if (removed) return const SizedBox.shrink();
+                                return IconButton(
+                                  icon: const Icon(Icons.block),
+                                  color: theme.colorScheme.outline,
+                                  tooltip: '광고 제거',
+                                  onPressed: IapService.buyRemoveAds,
+                                );
+                              },
                             ),
                             IconButton(
                               icon: const Icon(Icons.settings_outlined),
