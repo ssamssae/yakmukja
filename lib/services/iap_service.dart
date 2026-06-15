@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
@@ -8,10 +9,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///
 /// 구매(또는 복원) 시 [adsRemoved] 를 true 로 바꾸고 SharedPreferences 에 persist 한다.
 /// 배너 위젯이 [adsRemoved] 를 구독하므로 구매 즉시 광고가 사라진다.
-/// 스토어(Play Console / App Store Connect)에 productId `remove_ads` 비소모성 상품이
-/// 등록돼 있어야 실제 구매가 동작한다(상품 등록은 별도 게이트, 코드는 등록 전에도 안전).
+/// 비소모성 상품이 스토어에 등록돼 있어야 실제 구매가 동작한다(상품 등록은 별도 게이트,
+/// 코드는 등록 전에도 안전). productId 는 플랫폼별로 다르다 — Android(Play)는 앱 단위
+/// 스코프라 `remove_ads`, iOS(ASC)는 productId 가 개발자계정 전역 유일이라 reverse-DNS
+/// 네임스페이스 `com.daejongkang.yakmukja.remove_ads` 를 쓴다 (메모요가 `remove_ads` 선점).
 class IapService {
-  static const String removeAdsProductId = 'remove_ads';
+  static final String removeAdsProductId =
+      Platform.isIOS ? 'com.daejongkang.yakmukja.remove_ads' : 'remove_ads';
   static const String _prefsKey = 'iap_ads_removed';
 
   /// 광고 제거 여부. ValueListenableBuilder 로 구독해 구매 즉시 UI 반영.
