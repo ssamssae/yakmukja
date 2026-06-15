@@ -90,32 +90,40 @@ class HomeScreen extends StatelessWidget {
                             ),
                           ),
                         ],
-                        // 모두 복용 완료 시에만 축하 배너 (다음 복용 카운트다운 제거 — T-260614-12)
-                        if (entries.isNotEmpty && takenCount == entries.length) ...[
+                        // 축하 배너 자리는 약이 있으면 항상 예약(Visibility maintainSize) —
+                        // 모두복용 체크/해제 시 아래 리스트가 위아래로 점프하지 않게 한다.
+                        // (T-260614-12 카운트다운 제거 후 점프 재발 방지, 아니키 요청)
+                        if (entries.isNotEmpty) ...[
                           const SizedBox(height: 14),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            decoration: BoxDecoration(
-                              color: AppColors.success.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: AppColors.success.withValues(alpha: 0.25),
-                                width: 1,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.celebration_rounded, size: 20, color: AppColors.success),
-                                const SizedBox(width: 10),
-                                Text(
-                                  '오늘 약을 모두 복용했어요!',
-                                  style: TextStyle(
-                                    color: AppColors.success,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 14,
-                                  ),
+                          Visibility(
+                            visible: takenCount == entries.length,
+                            maintainSize: true,
+                            maintainAnimation: true,
+                            maintainState: true,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              decoration: BoxDecoration(
+                                color: AppColors.success.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: AppColors.success.withValues(alpha: 0.25),
+                                  width: 1,
                                 ),
-                              ],
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.celebration_rounded, size: 20, color: AppColors.success),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    '오늘 약을 모두 복용했어요!',
+                                    style: TextStyle(
+                                      color: AppColors.success,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
