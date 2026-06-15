@@ -53,8 +53,13 @@ void _startDeferredColdStartWork() {
       await _runDeferredStartupStep('pruneOldRecords', () {
         // 30일 초과 복용 기록 정리 (무한 누적 방지). 첫 프레임 이후로 미뤄
         // cold-start 흰 화면 시간을 늘리지 않는다.
-        for (final m in Hive.box<Medicine>(medicineBoxName).values) {
+        // 휴지통 30일 경과분도 함께 영구 삭제. (T-260614-12)
+        final cutoff = DateTime.now().subtract(Medicine.trashRetention);
+        for (final m in Hive.box<Medicine>(medicineBoxName).values.toList()) {
           m.pruneOldRecords();
+          if (m.deletedAt != null && m.deletedAt!.isBefore(cutoff)) {
+            m.delete();
+          }
         }
       });
       await _runDeferredStartupStep(

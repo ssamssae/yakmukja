@@ -301,7 +301,7 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('약 삭제'),
-        content: Text('"${widget.medicine!.name}"을(를) 삭제할까요?'),
+        content: Text('"${widget.medicine!.name}"을(를) 삭제할까요?\n삭제한 약은 휴지통에서 30일간 복원할 수 있어요.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -318,8 +318,10 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
       ),
     );
     if (confirm != true) return;
+    // 휴지통으로 이동(소프트 삭제) — 알림은 끄고, 복원 시 다시 예약. (T-260614-12)
     await NotificationService.cancelForMedicine(widget.medicine!);
-    await widget.medicine!.delete();
+    widget.medicine!.deletedAt = DateTime.now();
+    await widget.medicine!.save();
     if (mounted) Navigator.of(context).pop();
   }
 

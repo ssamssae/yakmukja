@@ -23,6 +23,10 @@ class Medicine extends HiveObject {
   @HiveField(5)
   List<String> takenRecords;
 
+  /// 휴지통 보관 시각. null = 활성, 값 있으면 휴지통에 있음. (T-260614-12)
+  @HiveField(6)
+  DateTime? deletedAt;
+
   /// 복용 요일 (ISO 8601: 1=월 … 7=일). 기본 = 매일([1..7]).
   /// 기존(필드 추가 전) 저장 데이터는 이 필드가 비어/null 로 역직렬화되는데,
   /// 그 경우 "매일"로 간주한다(activeWeekdays 게터 참조).
@@ -37,6 +41,7 @@ class Medicine extends HiveObject {
     required this.memo,
     required this.createdAt,
     List<String>? takenRecords,
+    this.deletedAt,
     List<int>? weekdays,
   })  : takenRecords = takenRecords ?? [],
         weekdays = weekdays ?? const [1, 2, 3, 4, 5, 6, 7];
@@ -61,6 +66,18 @@ class Medicine extends HiveObject {
     const names = ['월', '화', '수', '목', '금', '토', '일'];
     final sorted = [...activeWeekdays]..sort();
     return sorted.map((d) => names[d - 1]).join('·');
+  }
+
+  /// 휴지통 보관 기간 — 이 기간이 지나면 자동 영구삭제된다.
+  static const trashRetention = Duration(days: 30);
+
+  bool get isInTrash => deletedAt != null;
+
+  /// 영구삭제까지 남은 시간 (음수면 이미 만료).
+  Duration get timeUntilPurge {
+    final d = deletedAt;
+    if (d == null) return Duration.zero;
+    return d.add(trashRetention).difference(DateTime.now());
   }
 
   String _todayKey(DoseTime t) {
