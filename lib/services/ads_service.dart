@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
+import 'iap_service.dart';
+
 /// AdMob 초기화 + 광고 단위 ID 관리.
 ///
 /// 정책: 약먹자는 iOS-only 출시 상태를 유지한다. AdMob 도 iOS 운영 배너만
@@ -63,6 +65,7 @@ class _AdaptiveBannerState extends State<AdaptiveBanner> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!AdsService.isSupportedPlatform) return;
+    if (IapService.adsRemoved.value) return; // 광고 제거 구매됨 → 로드 안 함
     if (_bannerAd == null) {
       _loadAd();
     }
@@ -113,17 +116,22 @@ class _AdaptiveBannerState extends State<AdaptiveBanner> {
     if (!AdsService.isSupportedPlatform) {
       return const SizedBox.shrink();
     }
-    final size = _size;
-    if (!_loaded || _bannerAd == null || size == null) {
-      return const SizedBox.shrink();
-    }
-    return SafeArea(
-      top: false,
-      child: SizedBox(
-        width: size.width.toDouble(),
-        height: size.height.toDouble(),
-        child: AdWidget(ad: _bannerAd!),
-      ),
+    return ValueListenableBuilder<bool>(
+      valueListenable: IapService.adsRemoved,
+      builder: (context, removed, _) {
+        final size = _size;
+        if (removed || !_loaded || _bannerAd == null || size == null) {
+          return const SizedBox.shrink();
+        }
+        return SafeArea(
+          top: false,
+          child: SizedBox(
+            width: size.width.toDouble(),
+            height: size.height.toDouble(),
+            child: AdWidget(ad: _bannerAd!),
+          ),
+        );
+      },
     );
   }
 }
