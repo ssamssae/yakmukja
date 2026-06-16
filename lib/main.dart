@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 
+import 'config.dart';
 import 'models/medicine.dart';
 import 'screens/splash_screen.dart';
 import 'services/ads_service.dart';
@@ -45,6 +46,39 @@ Future<void> _initLocalStore() async {
     await Hive.deleteBoxFromDisk(medicineBoxName);
     await Hive.openBox<Medicine>(medicineBoxName);
   }
+  if (kScreenshotSeed) {
+    await _seedScreenshotData();
+  }
+}
+
+/// 스토어 스크린샷용 샘플 약. 보관함이 비어 있을 때만 넣는다.
+Future<void> _seedScreenshotData() async {
+  final box = Hive.box<Medicine>(medicineBoxName);
+  if (box.isNotEmpty) return;
+  final now = DateTime.now();
+  await box.addAll([
+    Medicine(
+      name: '비타민D',
+      dosage: '1알',
+      times: [DoseTime(hour: 8, minute: 0)],
+      memo: '',
+      createdAt: now,
+    ),
+    Medicine(
+      name: '오메가3',
+      dosage: '2알',
+      times: [DoseTime(hour: 8, minute: 0), DoseTime(hour: 20, minute: 0)],
+      memo: '',
+      createdAt: now,
+    ),
+    Medicine(
+      name: '유산균',
+      dosage: '1알',
+      times: [DoseTime(hour: 21, minute: 30)],
+      memo: '',
+      createdAt: now,
+    ),
+  ]);
 }
 
 void _startDeferredColdStartWork() {
@@ -62,12 +96,15 @@ void _startDeferredColdStartWork() {
           }
         }
       });
-      await _runDeferredStartupStep(
-        'NotificationService.init',
-        NotificationService.init,
-      );
       await _runDeferredStartupStep('IapService.init', IapService.init);
-      await _runDeferredStartupStep('AdsService.init', AdsService.init);
+      if (!kScreenshotMode) {
+        // 스토어 스크린샷 캡처 시 알림권한 다이얼로그·광고 로드를 끈다.
+        await _runDeferredStartupStep(
+          'NotificationService.init',
+          NotificationService.init,
+        );
+        await _runDeferredStartupStep('AdsService.init', AdsService.init);
+      }
     }),
   );
 }

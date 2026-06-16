@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
+import '../config.dart';
 import 'iap_service.dart';
 
 /// AdMob 초기화 + 광고 단위 ID 관리.
@@ -73,6 +74,7 @@ class _AdaptiveBannerState extends State<AdaptiveBanner> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (kScreenshotMode) return; // 스토어 스크린샷 캡처 모드 → 광고 로드 안 함
     if (!AdsService.isSupportedPlatform) return;
     if (IapService.adsRemoved.value) return; // 광고 제거 구매됨 → 로드 안 함
     if (_bannerAd == null) {
