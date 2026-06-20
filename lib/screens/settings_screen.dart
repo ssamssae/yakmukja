@@ -89,17 +89,29 @@ class SettingsScreen extends StatelessWidget {
                   icon: Icons.block_outlined,
                   label: '광고 제거',
                   iconColor: AppColors.primary,
-                  onTap: IapService.buyRemoveAds);
+                  onTap: () async {
+                    final result = await IapService.buyRemoveAds();
+                    final msg = IapService.purchaseMessage(result);
+                    if (msg != null && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(msg)),
+                      );
+                    }
+                  });
             },
           ),
           _tile(context,
               icon: Icons.restore,
               label: '구매 복원',
               onTap: () async {
-                await IapService.restorePurchases();
+                final ok = await IapService.restorePurchases();
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('구매 내역을 복원했습니다')),
+                    SnackBar(
+                      content: Text(ok
+                          ? '구매 내역을 확인했어요.'
+                          : '스토어에 연결할 수 없어요. 잠시 후 다시 시도해주세요.'),
+                    ),
                   );
                 }
               }),

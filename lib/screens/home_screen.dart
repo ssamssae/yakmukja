@@ -58,7 +58,18 @@ class HomeScreen extends StatelessWidget {
                                   icon: const Icon(Icons.block),
                                   color: theme.colorScheme.outline,
                                   tooltip: '광고 제거',
-                                  onPressed: IapService.buyRemoveAds,
+                                  onPressed: () async {
+                                    final result =
+                                        await IapService.buyRemoveAds();
+                                    final msg =
+                                        IapService.purchaseMessage(result);
+                                    if (msg != null && context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(content: Text(msg)),
+                                      );
+                                    }
+                                  },
                                 );
                               },
                             ),
