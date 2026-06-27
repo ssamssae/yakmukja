@@ -1,0 +1,161 @@
+# Unified node-prefix PR auto-merge workflow.
+#
+# Design source of truth:
+# docs/specs/2026-06-27-unified-auto-merge-sweeper-design.md
+#
+# Principles:
+# - Claude/Anthropic action calls: 0.
+# - Only node prefix branches are eligible: wsl/, macmini/, desktop/, notebook/, mac/.
+# - Draft PRs and PRs labeled no-auto-merge are skipped.
+# - Sensitive app/payment/design paths are held with a PR comment.
+# - Non-sensitive PRs use GitHub native squash auto-merge when the repo supports
+#   it; private repos without auto-merge support fall back to direct squash merge.
+
+name: Auto-merge node-prefix PRs
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: auto-merge-${{ github.repository }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    if: >-
+      github.event.pull_request.draft == false &&
+      (startsWith(github.event.pull_request.head.ref, 'wsl/') ||
+       startsWith(github.event.pull_request.head.ref, 'macmini/') ||
+       startsWith(github.event.pull_request.head.ref, 'desktop/') ||
+       startsWith(github.event.pull_request.head.ref, 'notebook/') ||
+       startsWith(github.event.pull_request.head.ref, 'mac/')) &&
+      !contains(github.event.pull_request.labels.*.name, 'no-auto-merge')
+    steps:
+      - name: Detect sensitive files
+        id: sensitive
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_NAME: ${{ github.event.repository.name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          files="$(gh pr diff "$PR_NUMBER" --name-only --repo "$GH_REPO")"
+          printf '%s\n' "$files" > changed-files.txt
+
+          is_app_repo=false
+          is_payment_repo=false
+          is_web_repo=false
+
+          case "$REPO_NAME" in
+            hanjul|hanjulai|simple-memo-app|dutch_pay_calculator|yakmukja|hankeup|pomodoro|wordyo|lotto-calc)
+              is_app_repo=true
+              ;;
+          esac
+
+          case "$REPO_NAME" in
+            cheotireum)
+              is_payment_repo=true
+              ;;
+          esac
+
+          case "$REPO_NAME" in
+            daejong-page|kangdaejong-com|ssamssae.github.io)
+              is_web_repo=true
+              ;;
+          esac
+
+          sensitive=false
+          reasons=()
+
+          if [ "$is_app_repo" = true ]; then
+            if grep -qiE '(^|/)pubspec\.yaml$|^android/app/build\.gradle$|^android/.*/AndroidManifest\.xml$|^ios/|^fastlane/|(^|/)metadata/|payment|iap|billing|store' changed-files.txt; then
+              sensitive=true
+              reasons+=("app/store/payment path")
+            fi
+          fi
+
+          if [ "$is_payment_repo" = true ]; then
+            if grep -qiE 'payment|settlement|toss|^lib/payment_' changed-files.txt; then
+              sensitive=true
+              reasons+=("payment path")
+            fi
+          fi
+
+          # ⚠️ 제거 금지 (DO NOT REMOVE) — design/style visual review gate.
+          # Inherited from daejong-page T-260610-14. Web design/style changes
+          # require manual visual review before merge.
+          if [ "$is_web_repo" = true ]; then
+            if grep -qiE '\.(css|scss|svg|astro)$|^public/.*\.html$' changed-files.txt; then
+              sensitive=true
+              reasons+=("web design/style path")
+            fi
+          fi
+
+          if [ "$sensitive" = true ]; then
+            echo "sensitive=true" >> "$GITHUB_OUTPUT"
+            printf 'reason=%s\n' "$(IFS=', '; echo "${reasons[*]}")" >> "$GITHUB_OUTPUT"
+          else
+            echo "sensitive=false" >> "$GITHUB_OUTPUT"
+            echo "reason=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Hold sensitive PR
+        if: steps.sensitive.outputs.sensitive == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_REPO: ${{ github.repository }}
+          HOLD_REASON: ${{ steps.sensitive.outputs.reason }}
+        run: |
+          set -euo pipefail
+          gh pr comment "$PR_NUMBER" --repo "$GH_REPO" \
+            --body "🔒 민감 경로 변경 감지(${HOLD_REASON}) — auto-merge 보류. 수동 검토 후 머지하세요. no-auto-merge 라벨을 붙이면 계속 제외됩니다. 게이트=T-260627-24."
+
+      - name: Merge non-sensitive PR
+        if: steps.sensitive.outputs.sensitive != 'true'
+        env:
+          DEPLOY_PAT: ${{ secrets.DEPLOY_PAT }}
+          GITHUB_TOKEN_FALLBACK: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          token="$DEPLOY_PAT"
+          if [ -z "$token" ]; then
+            token="$GITHUB_TOKEN_FALLBACK"
+          fi
+          export GH_TOKEN="$token"
+
+          # ⚠️ 제거 금지 (DO NOT REMOVE) — merge prefers DEPLOY_PAT.
+          # GITHUB_TOKEN-created merges may not retrigger downstream deploy
+          # workflows because of GitHub anti-recursion. DEPLOY_PAT preserves
+          # daejong-page T-260610-14 behavior; absent PAT falls back safely.
+          owner="${GH_REPO%/*}"
+          repo="${GH_REPO#*/}"
+          auto_allowed="$(gh api graphql \
+            -f owner="$owner" \
+            -f name="$repo" \
+            -f query='query($owner:String!, $name:String!) { repository(owner:$owner, name:$name) { autoMergeAllowed } }' \
+            --jq '.data.repository.autoMergeAllowed')"
+
+          if [ "$auto_allowed" = "true" ]; then
+            gh pr merge "$PR_NUMBER" \
+              --squash \
+              --delete-branch \
+              --auto \
+              --repo "$GH_REPO"
+          else
+            gh pr merge "$PR_NUMBER" \
+              --squash \
+              --delete-branch \
+              --repo "$GH_REPO"
+          fi
