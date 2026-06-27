@@ -5,7 +5,8 @@
 #
 # Principles:
 # - Claude/Anthropic action calls: 0.
-# - Only node prefix branches are eligible: wsl/, macmini/, desktop/, notebook/, mac/.
+# - Only node prefix branches are eligible: wsl/, macmini/, desktop/,
+#   desktop3060ti/, notebook/, notebook3060/, mac/.
 # - Draft PRs and PRs labeled no-auto-merge are skipped.
 # - Sensitive app/payment/design paths are held with a PR comment.
 # - Non-sensitive PRs use GitHub native squash auto-merge when the repo supports
@@ -33,7 +34,9 @@ jobs:
       (startsWith(github.event.pull_request.head.ref, 'wsl/') ||
        startsWith(github.event.pull_request.head.ref, 'macmini/') ||
        startsWith(github.event.pull_request.head.ref, 'desktop/') ||
+       startsWith(github.event.pull_request.head.ref, 'desktop3060ti/') ||
        startsWith(github.event.pull_request.head.ref, 'notebook/') ||
+       startsWith(github.event.pull_request.head.ref, 'notebook3060/') ||
        startsWith(github.event.pull_request.head.ref, 'mac/')) &&
       !contains(github.event.pull_request.labels.*.name, 'no-auto-merge')
     steps:
@@ -116,8 +119,12 @@ jobs:
           HOLD_REASON: ${{ steps.sensitive.outputs.reason }}
         run: |
           set -euo pipefail
-          gh pr comment "$PR_NUMBER" --repo "$GH_REPO" \
-            --body "🔒 민감 경로 변경 감지(${HOLD_REASON}) — auto-merge 보류. 수동 검토 후 머지하세요. no-auto-merge 라벨을 붙이면 계속 제외됩니다. 게이트=T-260627-24."
+          existing="$(gh pr view "$PR_NUMBER" --repo "$GH_REPO" --json comments \
+            --jq '[.comments[].body] | map(select(contains("민감 경로 변경 감지") and contains("게이트=T-260627-24"))) | length')"
+          if [ "$existing" = "0" ]; then
+            gh pr comment "$PR_NUMBER" --repo "$GH_REPO" \
+              --body "🔒 민감 경로 변경 감지(${HOLD_REASON}) — auto-merge 보류. 수동 검토 후 머지하세요. no-auto-merge 라벨을 붙이면 계속 제외됩니다. 게이트=T-260627-24."
+          fi
 
       - name: Merge non-sensitive PR
         if: steps.sensitive.outputs.sensitive != 'true'
@@ -141,6 +148,23 @@ jobs:
           # daejong-page T-260610-14 behavior; absent PAT falls back safely.
           owner="${GH_REPO%/*}"
           repo="${GH_REPO#*/}"
+
+          mergeable="UNKNOWN"
+          for _attempt in 1 2 3 4 5 6; do
+            mergeable="$(gh pr view "$PR_NUMBER" --repo "$GH_REPO" --json mergeable --jq '.mergeable')"
+            [ "$mergeable" != "UNKNOWN" ] && break
+            sleep 2
+          done
+          if [ "$mergeable" != "MERGEABLE" ]; then
+            existing="$(gh pr view "$PR_NUMBER" --repo "$GH_REPO" --json comments \
+              --jq '[.comments[].body] | map(select(contains("mergeable=") and contains("게이트=T-260627-24"))) | length')"
+            if [ "$existing" = "0" ]; then
+              gh pr comment "$PR_NUMBER" --repo "$GH_REPO" \
+                --body "⚠️ mergeable=${mergeable} — auto-merge 보류. 충돌 해결 또는 base 최신화 후 다시 라벨/커밋 이벤트를 발생시키세요. 게이트=T-260627-24."
+            fi
+            exit 0
+          fi
+
           auto_allowed="$(gh api graphql \
             -f owner="$owner" \
             -f name="$repo" \
