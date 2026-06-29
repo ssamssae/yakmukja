@@ -43,9 +43,7 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
         ? <DoseTime>[]
         : m.times.map((t) => DoseTime(hour: t.hour, minute: t.minute)).toList();
     // 신규 등록 기본 = 매일. 수정 시 기존 요일(마이그레이션 안전 게터) 사용.
-    _weekdays = m == null
-        ? {...Medicine.allWeekdays}
-        : {...m.activeWeekdays};
+    _weekdays = m == null ? {...Medicine.allWeekdays} : {...m.activeWeekdays};
 
     if (m != null && m.dosage.isNotEmpty) {
       _dosage = m.dosage;
@@ -81,9 +79,8 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                     children: [
                       Text(
                         '복용량 선택',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
                       ),
                       const Spacer(),
                       TextButton(
@@ -92,7 +89,9 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                       ),
                       TextButton(
                         onPressed: () {
-                          setState(() => _dosage = '${_dosageOptions[tempIndex]}알');
+                          setState(
+                            () => _dosage = '${_dosageOptions[tempIndex]}알',
+                          );
                           Navigator.pop(ctx);
                         },
                         child: const Text('확인'),
@@ -102,7 +101,9 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                 ),
                 Expanded(
                   child: CupertinoPicker(
-                    scrollController: FixedExtentScrollController(initialItem: tempIndex),
+                    scrollController: FixedExtentScrollController(
+                      initialItem: tempIndex,
+                    ),
                     itemExtent: 44,
                     onSelectedItemChanged: (i) => tempIndex = i,
                     children: [
@@ -110,7 +111,10 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                         Center(
                           child: Text(
                             '$d알',
-                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                     ],
@@ -128,8 +132,8 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
   static const _hourLabels = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 
   void _showTimePicker() {
-    int amPmIndex = 0;  // 0=오전, 1=오후
-    int hourIndex = 9;  // 기본 오전 9시 (_hourLabels[9] = 9)
+    int amPmIndex = 0; // 0=오전, 1=오후
+    int hourIndex = 9; // 기본 오전 9시 (_hourLabels[9] = 9)
     int minuteIndex = 0;
 
     showModalBottomSheet(
@@ -150,9 +154,8 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                     children: [
                       Text(
                         '복용 시간',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
                       ),
                       const Spacer(),
                       TextButton(
@@ -162,7 +165,8 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                       TextButton(
                         onPressed: () {
                           // 12시간제 -> 24시간제 변환
-                          final displayHour = _hourLabels[hourIndex]; // 12,1,2...11
+                          final displayHour =
+                              _hourLabels[hourIndex]; // 12,1,2...11
                           int h;
                           if (amPmIndex == 0) {
                             // 오전: 12->0, 1->1, ... 11->11
@@ -172,7 +176,9 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                             h = displayHour == 12 ? 12 : displayHour + 12;
                           }
                           final min = minuteIndex * 5;
-                          final duplicate = _times.any((t) => t.hour == h && t.minute == min);
+                          final duplicate = _times.any(
+                            (t) => t.hour == h && t.minute == min,
+                          );
                           if (duplicate) {
                             Navigator.pop(ctx);
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -182,8 +188,11 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                           }
                           setState(() {
                             _times.add(DoseTime(hour: h, minute: min));
-                            _times.sort((a, b) =>
-                                (a.hour * 60 + a.minute).compareTo(b.hour * 60 + b.minute));
+                            _times.sort(
+                              (a, b) => (a.hour * 60 + a.minute).compareTo(
+                                b.hour * 60 + b.minute,
+                              ),
+                            );
                           });
                           Navigator.pop(ctx);
                         },
@@ -198,36 +207,56 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                       Expanded(
                         flex: 2,
                         child: CupertinoPicker(
-                          scrollController: FixedExtentScrollController(initialItem: amPmIndex),
+                          scrollController: FixedExtentScrollController(
+                            initialItem: amPmIndex,
+                          ),
                           itemExtent: 40,
                           onSelectedItemChanged: (i) => amPmIndex = i,
                           children: const [
-                            Center(child: Text('오전', style: TextStyle(fontSize: 18))),
-                            Center(child: Text('오후', style: TextStyle(fontSize: 18))),
+                            Center(
+                              child: Text('오전', style: TextStyle(fontSize: 18)),
+                            ),
+                            Center(
+                              child: Text('오후', style: TextStyle(fontSize: 18)),
+                            ),
                           ],
                         ),
                       ),
                       Expanded(
                         flex: 2,
                         child: CupertinoPicker(
-                          scrollController: FixedExtentScrollController(initialItem: hourIndex),
+                          scrollController: FixedExtentScrollController(
+                            initialItem: hourIndex,
+                          ),
                           itemExtent: 40,
                           onSelectedItemChanged: (i) => hourIndex = i,
                           children: [
                             for (final h in _hourLabels)
-                              Center(child: Text('$h시', style: const TextStyle(fontSize: 18))),
+                              Center(
+                                child: Text(
+                                  '$h시',
+                                  style: const TextStyle(fontSize: 18),
+                                ),
+                              ),
                           ],
                         ),
                       ),
                       Expanded(
                         flex: 2,
                         child: CupertinoPicker(
-                          scrollController: FixedExtentScrollController(initialItem: minuteIndex),
+                          scrollController: FixedExtentScrollController(
+                            initialItem: minuteIndex,
+                          ),
                           itemExtent: 40,
                           onSelectedItemChanged: (i) => minuteIndex = i,
                           children: [
                             for (int m = 0; m < 60; m += 5)
-                              Center(child: Text('${m.toString().padLeft(2, '0')}분', style: const TextStyle(fontSize: 18))),
+                              Center(
+                                child: Text(
+                                  '${m.toString().padLeft(2, '0')}분',
+                                  style: const TextStyle(fontSize: 18),
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -246,21 +275,21 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
     if (_isSaving) return;
     if (!_formKey.currentState!.validate()) return;
     if (_dosage == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('복용량을 추가해 주세요.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('복용량을 추가해 주세요.')));
       return;
     }
     if (_times.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('복용 시간을 1개 이상 추가해 주세요.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('복용 시간을 1개 이상 추가해 주세요.')));
       return;
     }
     if (_weekdays.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('복용 요일을 1개 이상 선택해 주세요.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('복용 요일을 1개 이상 선택해 주세요.')));
       return;
     }
 
@@ -301,7 +330,9 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('약 삭제'),
-        content: Text('"${widget.medicine!.name}"을(를) 삭제할까요?\n삭제한 약은 휴지통에서 30일간 복원할 수 있어요.'),
+        content: Text(
+          '"${widget.medicine!.name}"을(를) 삭제할까요?\n삭제한 약은 휴지통에서 30일간 복원할 수 있어요.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -367,12 +398,12 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
               controller: _nameCtrl,
               decoration: const InputDecoration(
                 hintText: '예: 비타민 D, 혈압약',
-                prefixIcon: Icon(Icons.medication_rounded, color: AppColors.primary),
+                prefixIcon: Icon(
+                  Icons.medication_rounded,
+                  color: AppColors.primary,
+                ),
               ),
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
               validator: (v) =>
                   (v == null || v.trim().isEmpty) ? '이름을 입력해 주세요.' : null,
             ),
@@ -389,7 +420,7 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
             ),
             const SizedBox(height: 10),
             if (_dosage == null)
-              _EmptyPlaceholder(text: '복용량을 추가해 주세요', onTap: _showDosagePicker)
+              _EmptyPlaceholder(text: '복용량 추가하기', onTap: _showDosagePicker)
             else
               Align(
                 alignment: Alignment.centerLeft,
@@ -427,7 +458,7 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
             ),
             const SizedBox(height: 10),
             if (_times.isEmpty)
-              _EmptyPlaceholder(text: '시간을 추가해 주세요', onTap: _showTimePicker)
+              _EmptyPlaceholder(text: '복용 시간 추가하기', onTap: _showTimePicker)
             else
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -449,7 +480,9 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                           ),
                           deleteIcon: const Icon(Icons.close_rounded, size: 18),
                           onDeleted: () => setState(() => _times.removeAt(i)),
-                          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                          backgroundColor: AppColors.primary.withValues(
+                            alpha: 0.1,
+                          ),
                           side: BorderSide(
                             color: AppColors.primary.withValues(alpha: 0.3),
                           ),
@@ -461,9 +494,14 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                   ),
                   const SizedBox(height: 12),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
+                      color: theme.colorScheme.surfaceContainerHigh.withValues(
+                        alpha: 0.5,
+                      ),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Row(
@@ -540,8 +578,8 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
               _weekdays.length == 7
                   ? '매일 알림을 받아요'
                   : _weekdays.isEmpty
-                      ? '요일을 1개 이상 선택해 주세요'
-                      : '선택한 요일에만 알림을 받아요',
+                  ? '요일을 1개 이상 선택해 주세요'
+                  : '선택한 요일에만 알림을 받아요',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.outline,
               ),
@@ -627,7 +665,9 @@ class _AllDaysToggle extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                allSelected ? Icons.event_repeat_rounded : Icons.done_all_rounded,
+                allSelected
+                    ? Icons.event_repeat_rounded
+                    : Icons.done_all_rounded,
                 size: 16,
                 color: AppColors.primary,
               ),
@@ -657,10 +697,10 @@ class _SectionLabel extends StatelessWidget {
     return Text(
       label,
       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w800,
-            color: AppColors.primary,
-            letterSpacing: 0.3,
-          ),
+        fontWeight: FontWeight.w800,
+        color: AppColors.primary,
+        letterSpacing: 0.3,
+      ),
     );
   }
 }
@@ -724,10 +764,10 @@ class _EmptyPlaceholder extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 16),
           decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.6),
+            color: AppColors.primary.withValues(alpha: 0.07),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: theme.colorScheme.outline.withValues(alpha: 0.25),
+              color: AppColors.primary.withValues(alpha: 0.24),
               width: 1,
             ),
           ),
@@ -737,14 +777,14 @@ class _EmptyPlaceholder extends StatelessWidget {
               Icon(
                 Icons.add_circle_outline_rounded,
                 size: 18,
-                color: theme.colorScheme.outline,
+                color: AppColors.primary,
               ),
               const SizedBox(width: 8),
               Text(
                 text,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.outline,
-                  fontWeight: FontWeight.w500,
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
