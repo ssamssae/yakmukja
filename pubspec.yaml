@@ -46,7 +46,7 @@ dependencies:
   url_launcher: ^6.3.2
   hive_ce: ^2.19.3
   hive_ce_flutter: ^2.3.4
-  in_app_review: ^2.0.10
+  in_app_review: ^2.0.12
 
 dev_dependencies:
   flutter_test:
