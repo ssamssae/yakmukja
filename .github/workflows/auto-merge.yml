@@ -47,6 +47,7 @@ jobs:
           REPO_NAME: ${{ github.event.repository.name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           GH_REPO: ${{ github.repository }}
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           set -euo pipefail
 
@@ -92,14 +93,47 @@ jobs:
             fi
           fi
 
-          # ⚠️ 제거 금지 (DO NOT REMOVE) — design/style visual review gate.
+          # ⚠️ 제거 금지 (DO NOT REMOVE) — design/style + public content visual review gate.
           # Inherited from daejong-page T-260610-14. Web design/style changes
-          # require manual visual review before merge.
+          # require manual visual review before merge. T-260627-29: also hold
+          # public content data (src/data/, src/content/) so node edits to public
+          # pages (e.g. fleet-policy.json -> /policy) don't auto-publish unreviewed.
           if [ "$is_web_repo" = true ]; then
-            if grep -qiE '\.(css|scss|svg|astro)$|^public/.*\.html$' changed-files.txt; then
+            if grep -qiE '\.(css|scss|svg|astro)$|^public/.*\.html$|^src/data/|^src/content/' changed-files.txt; then
               sensitive=true
-              reasons+=("web design/style path")
+              reasons+=("web design/content path")
             fi
+          fi
+
+          # ⚠️ 제거 금지 (DO NOT REMOVE) — policy/infra hard-rule gate (T-260628-39, 2026-06-28).
+          # claude-skills/claude-automations 는 app/payment/web repo 가 아니라 위 감지가 전부 skip
+          # → globals/CLAUDE.md 하드룰·워크플로우·훅 PR 이 무검토 auto-merge 되던 사고
+          # (PR#139 globals, PR#214 ledger). 정책/하드룰/CI/가드(훅) 경로는 모든 repo 에서 hold 해
+          # 본진 Claude 검토를 강제한다. scripts/ 는 블랭킷 제외(claude-automations 전부 scripts → 손0 회귀).
+          if grep -qiE '(^|/)globals/|(^|/)(CLAUDE|AGENT|RTK)\.md$|^\.github/|(^|/)hooks/' changed-files.txt; then
+            sensitive=true
+            reasons+=("policy/infra path (globals/hard-rule/workflow/hooks)")
+          fi
+          # ⚠️ 제거 금지 (DO NOT REMOVE) — firing-path 스크립트 게이트 (T-260628-32, 2026-07-01).
+          # 위 line 112 가 scripts/ 를 블랭킷 제외하나, scripts/ 안의 directive·fire·lease·
+          # worker-toggle·dispatch·automation 류는 크로스노드 발사/제어 = 고위험 firing-path.
+          # 실증: PR#213 heartbeat 훅이 무검토 auto-merge 우회. 위험 스크립트명만 hold 해 본진 검토 강제
+          # (전체 scripts/ hold 는 손0 회귀라 이름 패턴으로 좁힘 — 신규 firing 스크립트도 카테고리로 포착).
+          if grep -qiE '(^|/)scripts/[^/]*(directive|fire|lease|worker-toggle|dispatch|automation-|engine-policy)' changed-files.txt; then
+            sensitive=true
+            reasons+=("firing-path/control script (directive/fire/lease/worker-toggle/dispatch)")
+          fi
+
+          # ⚠️ 제거 금지 (DO NOT REMOVE) — PR body manual-gate marker honored (T-260629, 2026-06-29).
+          # 게이트는 draft 상태/no-auto-merge 라벨만 봤고 PR body 의 'no-auto-merge' 텍스트는
+          # 무시 → 라벨/draft 를 못 붙인 PR 이 의도와 달리 auto-merge 되던 사고(PR#228 persona
+          # generator). body 에 no-auto-merge / 머지게이트:수동 / manual-merge 마커가 있으면 hold
+          # 해 작성자의 수동게이트 의도를 존중한다. 라벨 누락에도 안전한 자매 게이트.
+          # T-260630-36: 구분자에 = ＝ 추가 — '머지게이트=수동'(등호) 마커가 미인식돼 안전민감
+          # PR#251(ack-broker phase2)이 자동머지된 사고. 콜론/등호/전각 모두 수동게이트로 존중.
+          if printf '%s' "${PR_BODY:-}" | grep -qiE 'no-auto-merge|머지게이트[[:space:]]*[:：=＝][[:space:]]*수동|manual[-[:space:]]merge'; then
+            sensitive=true
+            reasons+=("no-auto-merge requested in PR body")
           fi
 
           if [ "$sensitive" = true ]; then
