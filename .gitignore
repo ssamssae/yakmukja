@@ -47,3 +47,5 @@ app.*.map.json
 # Android signing
 android/key.properties
 android/*.jks
+
+.claude/
