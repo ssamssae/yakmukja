@@ -19,4 +19,42 @@ void main() {
 
     expect(find.text('복용량 선택'), findsOneWidget);
   });
+
+  testWidgets('weekday chips expose selected button semantics', (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      await tester.pumpWidget(
+        MaterialApp(theme: AppTheme.light, home: const MedicineEditScreen()),
+      );
+
+      final monday = find.bySemanticsLabel('월요일 선택');
+
+      expect(
+        tester.getSemantics(monday),
+        matchesSemantics(
+          label: '월요일 선택',
+          isButton: true,
+          hasSelectedState: true,
+          isSelected: true,
+          hasTapAction: true,
+        ),
+      );
+    } finally {
+      semantics.dispose();
+    }
+  });
+
+  testWidgets('add buttons expose section-specific semantics', (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      await tester.pumpWidget(
+        MaterialApp(theme: AppTheme.light, home: const MedicineEditScreen()),
+      );
+
+      expect(find.bySemanticsLabel('복용량 추가'), findsOneWidget);
+      expect(find.bySemanticsLabel('복용 시간 추가'), findsOneWidget);
+    } finally {
+      semantics.dispose();
+    }
+  });
 }
