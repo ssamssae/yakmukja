@@ -415,7 +415,10 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
               children: [
                 const _SectionLabel(label: '복용량'),
                 const Spacer(),
-                _AddPillButton(onTap: _showDosagePicker),
+                _AddPillButton(
+                  semanticsLabel: '복용량 추가',
+                  onTap: _showDosagePicker,
+                ),
               ],
             ),
             const SizedBox(height: 10),
@@ -453,7 +456,10 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
               children: [
                 const _SectionLabel(label: '복용 시간'),
                 const Spacer(),
-                _AddPillButton(onTap: _showTimePicker),
+                _AddPillButton(
+                  semanticsLabel: '복용 시간 추가',
+                  onTap: _showTimePicker,
+                ),
               ],
             ),
             const SizedBox(height: 10),
@@ -604,33 +610,45 @@ class _WeekdayChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: 40,
-          height: 40,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected
-                ? AppColors.primary.withValues(alpha: 0.12)
-                : theme.colorScheme.surfaceContainerHigh.withValues(alpha: 0.5),
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: '$label요일 선택',
+      onTap: onTap,
+      child: ExcludeSemantics(
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: selected
-                  ? AppColors.primary.withValues(alpha: 0.4)
-                  : theme.colorScheme.outline.withValues(alpha: 0.25),
-              width: 1,
-            ),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 14,
-              color: selected ? AppColors.primary : theme.colorScheme.outline,
+            child: Container(
+              width: 40,
+              height: 40,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: selected
+                    ? AppColors.primary.withValues(alpha: 0.12)
+                    : theme.colorScheme.surfaceContainerHigh.withValues(
+                        alpha: 0.5,
+                      ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: selected
+                      ? AppColors.primary.withValues(alpha: 0.4)
+                      : theme.colorScheme.outline.withValues(alpha: 0.25),
+                  width: 1,
+                ),
+              ),
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  color: selected
+                      ? AppColors.primary
+                      : theme.colorScheme.outline,
+                ),
+              ),
             ),
           ),
         ),
@@ -706,40 +724,49 @@ class _SectionLabel extends StatelessWidget {
 }
 
 class _AddPillButton extends StatelessWidget {
+  final String semanticsLabel;
   final VoidCallback onTap;
-  const _AddPillButton({required this.onTap});
+  const _AddPillButton({required this.semanticsLabel, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.15),
+    return Semantics(
+      container: true,
+      button: true,
+      label: semanticsLabel,
+      onTap: onTap,
+      child: ExcludeSemantics(
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.35),
-              width: 1,
-            ),
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.add_rounded, size: 16, color: AppColors.primary),
-              SizedBox(width: 4),
-              Text(
-                '추가',
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.35),
+                  width: 1,
                 ),
               ),
-            ],
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.add_rounded, size: 16, color: AppColors.primary),
+                  SizedBox(width: 4),
+                  Text(
+                    '추가',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
