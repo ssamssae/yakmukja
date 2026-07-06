@@ -7,6 +7,13 @@ import '../services/iap_service.dart';
 import '../theme/app_theme.dart';
 import 'medicine_edit_screen.dart';
 
+String takenButtonSemanticsLabel({
+  required String prefix,
+  required bool taken,
+}) {
+  return taken ? '$prefix 복용 완료 취소' : '$prefix 복용 완료로 표시';
+}
+
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -399,6 +406,7 @@ class _MedicineCard extends StatelessWidget {
               ),
               _TakenButton(
                 taken: taken,
+                semanticsPrefix: '${medicine.name} ${time.format()}',
                 onTap: () => medicine.toggleTaken(time),
               ),
             ],
@@ -411,29 +419,51 @@ class _MedicineCard extends StatelessWidget {
 
 class _TakenButton extends StatelessWidget {
   final bool taken;
+  final String semanticsPrefix;
   final VoidCallback onTap;
-  const _TakenButton({required this.taken, required this.onTap});
+  const _TakenButton({
+    required this.taken,
+    required this.semanticsPrefix,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    final label = takenButtonSemanticsLabel(
+      prefix: semanticsPrefix,
+      taken: taken,
+    );
+    return Semantics(
+      container: true,
+      button: true,
+      selected: taken,
+      label: label,
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: taken ? AppColors.success : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: taken ? AppColors.success : Theme.of(context).colorScheme.outline,
-            width: taken ? 0 : 1.5,
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: taken ? AppColors.success : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: taken
+                    ? AppColors.success
+                    : Theme.of(context).colorScheme.outline,
+                width: taken ? 0 : 1.5,
+              ),
+            ),
+            child: Icon(
+              Icons.check_rounded,
+              color: taken
+                  ? Colors.white
+                  : Theme.of(context).colorScheme.outline,
+              size: 22,
+            ),
           ),
-        ),
-        child: Icon(
-          Icons.check_rounded,
-          color: taken ? Colors.white : Theme.of(context).colorScheme.outline,
-          size: 22,
         ),
       ),
     );
