@@ -27,7 +27,7 @@ Android 는 출시 보류 상태라 AdMob App ID / 광고 단위 ID 를 발급�
 
 ## 개발 환경
 
-- Flutter (FVM 사용, `~/fvm/versions/stable/bin/flutter`)
+- Flutter (FVM, `.fvmrc` = 3.44.6 고정 — 명령은 `tool/flutter.sh` 경유)
 - Dart 3.x
 - Hive (`medicine.dart` / `medicine.g.dart`), `flutter_local_notifications`, `google_mobile_ads` (iOS 배너)
 - M1 Mac (darwin-arm64)
@@ -35,18 +35,24 @@ Android 는 출시 보류 상태라 AdMob App ID / 광고 단위 ID 를 발급�
 ## 자주 쓰는 명령
 
 ```bash
+# 툴체인 생존 확인 (다른 명령 전에 한 번)
+tool/flutter.sh --version
+
 # 클린 빌드 후 iOS 실기기 실행
-fvm flutter clean && fvm flutter run --release
+tool/flutter.sh clean && tool/flutter.sh run --release
 
 # Android APK 빌드 (split per ABI)
-fvm flutter build apk --release --split-per-abi
+tool/flutter.sh build apk --release --split-per-abi
 
 # iOS IPA 빌드
-fvm flutter build ipa --release
+tool/flutter.sh build ipa --release
 
 # 정적 분석
-fvm dart analyze lib/
+tool/flutter.sh analyze lib/
 ```
+
+`fvm flutter` 를 직접 부르지 않는다 — 버전 미지정 시 출력 0줄 + rc=0 으로 조용히
+무동작해서 검증이 위장된다 (T-260728-089). 래퍼가 그 상태를 크게 실패시킨다.
 
 ## 주의사항
 

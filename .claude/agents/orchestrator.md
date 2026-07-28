@@ -66,7 +66,7 @@ You are the lead architect and orchestrator for a Flutter mobile app project.
 - 한국어로 답변
 - 작업 계획을 먼저 사용자에게 보여준 뒤 실행
 - 서브에이전트 결과를 요약해서 보고
-- FVM 환경 기준으로 Flutter 명령어 사용 (fvm flutter ...)
+- Flutter 명령은 `tool/flutter.sh` 경유 — `fvm flutter` 직접 호출 금지 (T-260728-089)
 - **작업 시작 전 "이렇게 진행하겠습니다" 계획을 보여주고, 사용자가 OK 해야 실행**
 
 ## 프로젝트 정보

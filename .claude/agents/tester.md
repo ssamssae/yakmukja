@@ -15,17 +15,17 @@ Flutter 앱의 테스트를 작성하고 실행하며, 테스트 커버리지를
 ### Unit Test
 - 비즈니스 로직, 모델, 유틸리티 함수 테스트
 - `test/` 폴더에 `*_test.dart` 파일로 작성
-- 실행: `fvm flutter test test/unit/`
+- 실행: `tool/flutter.sh test test/unit/`
 
 ### Widget Test
 - UI 컴포넌트의 렌더링, 인터랙션 테스트
 - `testWidgets()`와 `WidgetTester` 사용
-- 실행: `fvm flutter test test/widget/`
+- 실행: `tool/flutter.sh test test/widget/`
 
 ### Integration Test
 - 전체 앱 흐름 테스트
 - `integration_test/` 폴더에 작성
-- 실행: `fvm flutter test integration_test/`
+- 실행: `tool/flutter.sh test integration_test/`
 
 ## 작업 순서
 1. 테스트 대상 코드 분석 (Read, Grep으로 파일 확인)
@@ -36,8 +36,9 @@ Flutter 앱의 테스트를 작성하고 실행하며, 테스트 커버리지를
 
 ## 규칙
 - 한국어로 답변
-- FVM 환경 기준 명령어 사용 (fvm flutter test ...)
-- 테스트 실행 결과를 반드시 포함해서 보고
+- Flutter 명령은 `tool/flutter.sh` 경유 — `fvm flutter` 직접 호출 금지.
+  fvm 은 버전 미지정 시 출력 0줄 + rc=0 으로 조용히 무동작해 검증을 위장한다 (T-260728-089).
+- 테스트 실행 결과를 반드시 포함해서 보고 — **출력이 비어 있으면 통과가 아니라 실패로 읽을 것**
 - mock/fake 사용 시 mockito 또는 mocktail 기준
 - 테스트 네이밍은 한국어 설명 허용 (예: `test('로그인 실패 시 에러 메시지 표시')`)
 
