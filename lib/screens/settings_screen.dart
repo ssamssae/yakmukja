@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/app_review_service.dart';
 import '../services/iap_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/version_footer.dart';
 import 'policy_screen.dart';
 import 'trash_screen.dart';
 
@@ -135,6 +136,12 @@ class SettingsScreen extends StatelessWidget {
                   const PolicyScreen(
                       title: '개인정보처리방침',
                       assetPath: 'docs/legal/privacy-policy.md'))),
+          // 설정 최하단 런타임 버전 — main_shell 푸터와 같은 위젯을 재사용해
+          // 두 화면이 다른 문자열을 보이지 않게 한다 (T-260728-086).
+          const Padding(
+            padding: EdgeInsets.only(top: 24, bottom: 8),
+            child: VersionFooter(),
+          ),
         ],
       ),
     );
