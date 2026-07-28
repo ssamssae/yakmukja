@@ -49,3 +49,6 @@ android/key.properties
 android/*.jks
 
 .claude/
+
+# FVM Version Cache
+.fvm/
