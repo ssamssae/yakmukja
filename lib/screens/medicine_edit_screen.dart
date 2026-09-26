@@ -311,13 +311,18 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
         await box.add(medicine);
         await NotificationService.scheduleForMedicine(medicine);
       } else {
+        // Retain old slots until persistence succeeds, then replace alarms.
+        final previousTimeCount = existing.times.length;
         existing
           ..name = _nameCtrl.text.trim()
           ..dosage = _dosage!
           ..times = _times
           ..weekdays = weekdays;
         await existing.save();
-        await NotificationService.scheduleForMedicine(existing);
+        await NotificationService.scheduleForMedicine(
+          existing,
+          previousTimeCount: previousTimeCount,
+        );
       }
       if (mounted) Navigator.of(context).pop();
     } finally {

@@ -65,9 +65,12 @@ class NotificationService {
   /// 약에 등록된 시간 × 선택 요일에 반복 알림 스케줄.
   /// - 매일(7요일 전부) 약은 시간마다 1개(DateTimeComponents.time)로 효율 유지.
   /// - 특정 요일만 선택한 약은 (시간 × 요일) 조합마다 dayOfWeekAndTime 으로 예약.
-  static Future<void> scheduleForMedicine(Medicine medicine) async {
+  static Future<void> scheduleForMedicine(
+    Medicine medicine, {
+    int? previousTimeCount,
+  }) async {
     if (!_initialized) return;
-    await cancelForMedicine(medicine);
+    await cancelForMedicine(medicine, previousTimeCount: previousTimeCount);
 
     final daily = medicine.isDaily;
 
@@ -105,14 +108,21 @@ class NotificationService {
     }
   }
 
-  static Future<void> cancelForMedicine(Medicine medicine) async {
+  static Future<void> cancelForMedicine(
+    Medicine medicine, {
+    int? previousTimeCount,
+  }) async {
     if (!_initialized) return;
     // key 가 null 화(=삭제) 되기 전에 id 를 먼저 스냅샷 — 호출자가 await 안 하고
     // 곧바로 medicine.delete() 를 돌려도 취소 대상을 놓치지 않는다.
     // 요일 변경 후 재스케줄 시 잔여 알림이 안 남도록, 시간마다 daily 슬롯(0) +
     // 전체 요일 슬롯(1..7)을 모두 취소한다.
     final ids = <int>{};
-    for (int i = 0; i < medicine.times.length; i++) {
+    // Include removed slots when editing a medicine to fewer dose times.
+    final timeCount = (previousTimeCount ?? 0) > medicine.times.length
+        ? previousTimeCount!
+        : medicine.times.length;
+    for (int i = 0; i < timeCount; i++) {
       for (int wd = 0; wd <= 7; wd++) {
         final id = _notificationId(medicine, i, wd);
         if (id != null) ids.add(id);
