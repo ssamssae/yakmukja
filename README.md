@@ -68,3 +68,7 @@ tool/flutter.sh analyze lib/
 ## 백로그
 
 `BACKLOG.md` 참조.
+
+## 기능 검증
+
+[이번 수정의 확인 경로](docs/feature-map.md)
