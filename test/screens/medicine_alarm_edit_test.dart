@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -30,6 +31,10 @@ void main() {
           () => Hive.openBox<Medicine>(medicineBoxName),
         ))!;
         final pending = <int>{};
+        final rescheduled = (await tester.runAsync(
+          () async => Completer<void>(),
+        ))!;
+        var firstMedicineSchedules = 0;
         final messenger =
             TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
         debugDefaultTargetPlatformOverride = platform;
@@ -46,8 +51,15 @@ void main() {
           const MethodChannel('dexterous.com/flutter/local_notifications'),
           (call) async {
             final args = call.arguments;
-            if (call.method == 'zonedSchedule') pending.add(args['id'] as int);
-            if (call.method == 'cancel') pending.remove(args is int ? args : args['id'] as int);
+            if (call.method == 'zonedSchedule') {
+              pending.add(args['id'] as int);
+              if (args['id'] == 0 && ++firstMedicineSchedules == 2) {
+                rescheduled.complete();
+              }
+            }
+            if (call.method == 'cancel') {
+              pending.remove(args is int ? args : args['id'] as int);
+            }
             return true;
           },
         );
@@ -87,7 +99,7 @@ void main() {
           await tester.pumpAndSettle();
           await tester.runAsync(() async {
             await tester.tap(find.text('저장'));
-            await Future<void>.delayed(const Duration(milliseconds: 100));
+            await rescheduled.future.timeout(const Duration(seconds: 5));
           });
           await tester.pumpAndSettle();
           expect(first.times.length, 1);
