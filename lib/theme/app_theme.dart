@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
 
-/// 약먹자 디자인 시스템 (라이트). 더치페이와 같은 구조, 포인트 컬러만 다름(틸).
+/// 약먹자 디자인 토큰. 토스톤 라이트(프리텐다드·회색 글자·#F2F4F6) + 브랜드 초록.
 /// 색·간격·라운드 토큰을 한 곳에 모아 화면 코드에서 직접 hex 박지 않도록 한다.
 class AppColors {
   AppColors._();
 
-  // 베이스 (목업 클린 클리니컬 톤)
+  // 베이스
   static const bg = Color(0xFFF2F4F6); // scaffold 오프화이트
   static const surface = Color(0xFFFFFFFF); // 카드
   static const shadow = Color(0x0A000000); // black 4% — 옅은 카드 그림자
 
-  // 포인트 (약먹자 = 그린, 새 앱 아이콘과 통일)
+  // 포인트 (약먹자 = 그린. 토스 파랑은 쓰지 않는다)
   static const primary = Color(0xFF22C55E);
-  static const primaryDark = Color(0xFF16A34A); // 텍스트/대비용
+  static const primaryDark = Color(0xFF16A34A); // 초록 글자
   static Color get primarySoft => primary.withValues(alpha: 0.12);
 
-  // 텍스트 (목업 클린 클리니컬 톤)
+  // 텍스트 (토스톤)
   static const textStrong = Color(0xFF191F28);
-  static const textBody = Color(0xFF4B5563);
+  static const textBody = Color(0xFF4E5968);
   static const textFaint = Color(0xFF8B95A1);
 
   // 상태 (완료 = green, primary 와 동일 계열로 통일)
@@ -29,8 +29,6 @@ class AppColors {
   static const greenSoft = Color(0xFFECFBF1); // 그린 아이콘칩 배경
   static const trackGrey = Color(0xFFE5E8EB); // 진행바 트랙
   static const chipGrey = Color(0xFFF2F4F6); // 대기 아이콘칩 배경
-  static const accent = Color(0xFF3182F6); // "예정" 배지 텍스트
-  static const accentSoft = Color(0xFFEAF2FE); // "예정" 배지 배경
 }
 
 /// 간격 스케일 (4·8·12·16·20·24)
@@ -46,7 +44,10 @@ class AppSpace {
 
 class AppRadius {
   AppRadius._();
+  // 휴지통 등 기존 카드. 메인 밖 화면은 이 값을 유지한다.
   static const card = 22.0;
+  // 메인 흰 카드. 토스톤 16~20.
+  static const homeCard = 20.0;
   static const button = 14.0;
   static const input = 12.0;
   static const chip = 12.0;
@@ -54,6 +55,8 @@ class AppRadius {
 
 class AppTheme {
   AppTheme._();
+
+  static const fontFamily = 'Pretendard';
 
   static ThemeData get light {
     final scheme = ColorScheme.fromSeed(
@@ -67,9 +70,11 @@ class AppTheme {
 
     return ThemeData(
       useMaterial3: true,
+      fontFamily: fontFamily,
       colorScheme: scheme,
       scaffoldBackgroundColor: AppColors.bg,
       textTheme: Typography.blackMountainView.apply(
+        fontFamily: fontFamily,
         bodyColor: AppColors.textStrong,
         displayColor: AppColors.textStrong,
       ),

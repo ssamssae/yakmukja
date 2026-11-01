@@ -20,8 +20,9 @@ class VersionFooter extends StatelessWidget {
           child: Text(
             label,
             style: const TextStyle(
+              fontFamily: AppTheme.fontFamily,
               fontSize: 10,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
               color: AppColors.textFaint,
               letterSpacing: -0.1,
             ),

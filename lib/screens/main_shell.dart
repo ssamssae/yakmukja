@@ -138,6 +138,7 @@ class _Tab extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
+                fontFamily: AppTheme.fontFamily,
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
                 color: color,
