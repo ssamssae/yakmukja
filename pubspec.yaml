@@ -66,7 +66,7 @@ flutter_native_splash:
   android_12:
     color: "#F7F8FA"
 
-# 런처 아이콘 = design/icon_master.png (캡슐 + 초록 체크, 솔리드 그라데이션 배경).
+# 런처 아이콘 = design/icon_master.png (웃는 초록 알약, T-261102-014).
 # 변경 후 재생성: dart run flutter_launcher_icons
 flutter_launcher_icons:
   android: true
