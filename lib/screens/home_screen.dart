@@ -463,29 +463,32 @@ class _NowCard extends StatelessWidget {
                 ),
                 onTap: () => medicine.toggleTaken(entry.time),
               ),
-              const SizedBox(height: 14),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.notifications_none_rounded,
-                    size: 16,
-                    color: RenewalColors.faint,
-                  ),
-                  const SizedBox(width: 4),
-                  Flexible(
-                    child: Text(
-                      '${entry.when}에 알림을 보내드릴게요',
-                      textAlign: TextAlign.center,
-                      style: renewalStyle(
-                        13,
-                        FontWeight.w600,
-                        RenewalColors.faint,
+              // 알림 안내는 복용 시각 전에만 보인다. 시각이 지나면 「지금」 카드에 미래형 문구가 남지 않게 한다.
+              if (entry.minuteOfDay > nowMinute) ...[
+                const SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.notifications_none_rounded,
+                      size: 16,
+                      color: RenewalColors.faint,
+                    ),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        '${entry.when}에 알림을 보내드릴게요',
+                        textAlign: TextAlign.center,
+                        style: renewalStyle(
+                          13,
+                          FontWeight.w600,
+                          RenewalColors.faint,
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),

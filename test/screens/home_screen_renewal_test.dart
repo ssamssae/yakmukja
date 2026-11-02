@@ -216,6 +216,25 @@ void main() {
     expect(find.byKey(const Key('home-take-button')), findsOneWidget);
     expect(find.text('오늘 약을 다 먹었어요'), findsNothing);
   });
+
+  testWidgets('reminder line shows only before the dose time', (tester) async {
+    await _seed([
+      Medicine(
+        name: '오메가3',
+        dosage: '2알',
+        times: [DoseTime(hour: 8, minute: 30)],
+        memo: '',
+        createdAt: DateTime.now(),
+      ),
+    ]);
+
+    await _pumpHome(tester, _todayAt(8, 10));
+    expect(find.text('아침 8:30에 알림을 보내드릴게요'), findsOneWidget);
+
+    await _pumpHome(tester, _todayAt(9, 0));
+    expect(find.text('지금'), findsOneWidget);
+    expect(find.text('아침 8:30에 알림을 보내드릴게요'), findsNothing);
+  });
 }
 
 DateTime _todayAt(int hour, int minute) {
