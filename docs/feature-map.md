@@ -13,5 +13,6 @@ T-260926-017 · 2026-09-26 KST · mac:codex
 
 - 진입점: 앱 실행 → 약먹자 / 건강한 하루의 시작 화면.
 - 현재 런처 원본 design/icon_master.png를 assets/images/logo.png에 그대로 동기화해 시작화면과 앱 아이콘을 일치.
+- 2026-11-02 KST 아이콘을 웃는 초록 알약(세트 20261102-0948 2번)으로 교체했다.
 - 확인: 두 파일 SHA256 동일, SplashScreen.logoAssetPath 연결 및 기존 splash 테스트.
 - 미확인: 새 설치본 사용자 iPhone 화면.
