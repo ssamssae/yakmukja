@@ -7,6 +7,7 @@ import 'package:yakmukja/main.dart';
 import 'package:yakmukja/models/medicine.dart';
 import 'package:yakmukja/screens/home_screen.dart';
 import 'package:yakmukja/theme/app_theme.dart';
+import 'package:yakmukja/theme/renewal_theme.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -27,7 +28,7 @@ void main() {
     expect(AppTheme.light.textTheme.headlineMedium?.fontFamily, 'Pretendard');
   });
 
-  testWidgets('home uses Pretendard, 20px card radius, and toss text colors', (
+  testWidgets('home renewal keeps Pretendard and toss text colors', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 900);
@@ -85,26 +86,19 @@ void main() {
     await tester.pump();
     expect(tester.takeException(), isNull);
 
-    final title = tester.widget<Text>(find.text('오늘 1 / 2 완료'));
+    final title = tester.widget<Text>(find.text('오늘 1/2 먹었어요'));
     expect(title.style?.fontFamily, 'Pretendard');
     expect(title.style?.color, AppColors.textStrong);
     expect(title.style?.fontWeight, FontWeight.w800);
-    expect(title.style?.fontSize, 28);
+    expect(title.style?.fontSize, 24);
 
-    final sections = tester.widgetList<Text>(find.text('아침'));
-    expect(
-      sections.any(
-        (text) =>
-            text.style?.fontFamily == 'Pretendard' &&
-            text.style?.color == AppColors.textStrong &&
-            (text.style?.fontSize ?? 0) >= 16,
-      ),
-      isTrue,
-    );
-    expect(
-      sections.any((text) => text.style?.color == AppColors.primaryDark),
-      isTrue,
-    );
+    final when = tester.widget<Text>(find.text('아침 8:00'));
+    expect(when.style?.fontFamily, 'Pretendard');
+    expect(when.style?.color, AppColors.textBody);
+
+    final badge = tester.widget<Text>(find.text('다음 약'));
+    expect(badge.style?.fontFamily, 'Pretendard');
+    expect(badge.style?.color, AppColors.primaryDark);
 
     final dosage = tester.widget<Text>(find.text('1알'));
     expect(dosage.style?.fontFamily, 'Pretendard');
@@ -119,23 +113,15 @@ void main() {
       final decoration = (element.widget as DecoratedBox).decoration;
       if (decoration is! BoxDecoration) continue;
       if (decoration.borderRadius !=
-          BorderRadius.circular(AppRadius.homeCard)) {
+          BorderRadius.circular(RenewalRadius.nowCard)) {
         continue;
       }
-      expect(decoration.color, AppColors.surface);
-      expect(decoration.boxShadow?.single.color, AppColors.shadow);
+      expect(decoration.color, Colors.white);
       matchedCard = true;
     }
     expect(matchedCard, isTrue);
-
-    final checks = tester.widgetList<AnimatedContainer>(
-      find.byType(AnimatedContainer),
-    );
-    final fills = checks
-        .map((widget) => (widget.decoration as BoxDecoration).color)
-        .toSet();
-    expect(fills.contains(Colors.transparent), isTrue);
-    expect(fills.contains(AppColors.success), isTrue);
+    expect(find.byIcon(Icons.block), findsNothing);
+    expect(find.byTooltip('광고 제거'), findsNothing);
 
     final theme = Theme.of(tester.element(find.byType(HomeScreen)));
     expect(theme.scaffoldBackgroundColor, const Color(0xFFF2F4F6));

@@ -3,8 +3,9 @@ import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 
 import '../main.dart';
 import '../models/medicine.dart';
-import '../services/iap_service.dart';
-import '../theme/app_theme.dart';
+import '../theme/renewal_theme.dart';
+import '../widgets/pill_glyph.dart';
+import '../widgets/renewal_check.dart';
 import 'medicine_edit_screen.dart';
 
 String takenButtonSemanticsLabel({
@@ -14,452 +15,535 @@ String takenButtonSemanticsLabel({
   return taken ? '$prefix 복용 완료 취소' : '$prefix 복용 완료로 표시';
 }
 
+/// 아직 안 먹은 칸 중 지금과 시간 차이가 가장 작은 칸.
+/// 차이가 같으면 더 이른 시간을 고른다. 없으면 null.
+int? pickNextDoseIndex(
+  List<({int minuteOfDay, bool taken})> doses,
+  int nowMinute,
+) {
+  int? best;
+  var bestGap = 1 << 30;
+  for (var i = 0; i < doses.length; i++) {
+    if (doses[i].taken) continue;
+    final gap = (doses[i].minuteOfDay - nowMinute).abs();
+    final earlierTie =
+        best != null &&
+        gap == bestGap &&
+        doses[i].minuteOfDay < doses[best].minuteOfDay;
+    if (best == null || gap < bestGap || earlierTie) {
+      best = i;
+      bestGap = gap;
+    }
+  }
+  return best;
+}
+
+/// 큰 카드의 남은 시간. 시각이 지났으면 "지금".
+String doseRemainText(int doseMinute, int nowMinute) {
+  final remain = doseMinute - nowMinute;
+  if (remain <= 0) return '지금';
+  final hours = remain ~/ 60;
+  final minutes = remain % 60;
+  if (hours == 0) return '$minutes분 남음';
+  if (minutes == 0) return '$hours시간 남음';
+  return '$hours시간 $minutes분 남음';
+}
+
+/// 메인 시간대. 새벽 · 아침 · 오후 · 저녁.
+String homePeriodLabel(int hour) {
+  if (hour < 6) return '새벽';
+  if (hour < 12) return '아침';
+  if (hour < 18) return '오후';
+  return '저녁';
+}
+
+/// 12시간제 "8:00" · "9:30".
+String homeClockLabel(int hour, int minute) {
+  final h = hour % 12 == 0 ? 12 : hour % 12;
+  return '$h:${minute.toString().padLeft(2, '0')}';
+}
+
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.clock});
+
+  /// 화면의 오늘 시각. 비우면 [DateTime.now].
+  /// 복용 기록 키는 [Medicine.isTaken] 이 실제 오늘로 만든다.
+  /// 시험용 시계도 그 오늘 날짜를 쓴다.
+  final DateTime Function()? clock;
+
+  DateTime _now() => (clock ?? DateTime.now)();
 
   @override
   Widget build(BuildContext context) {
     final box = Hive.box<Medicine>(medicineBoxName);
-
     return Scaffold(
-      body: ValueListenableBuilder<Box<Medicine>>(
-        valueListenable: box.listenable(),
-        builder: (context, box, _) {
-          final entries = _todayEntries(box);
-          final grouped = _groupByPeriod(entries);
-          final takenCount = entries
-              .where((e) => e.medicine.isTaken(e.time))
-              .length;
-
-          return CustomScrollView(
-            // 빈 상태에서 오버스크롤로 "등록된 약이 없어요" 가 화면 밖으로 밀려 나가는 이슈 방지
-            physics: entries.isEmpty
-                ? const NeverScrollableScrollPhysics()
-                : null,
-            slivers: [
-              SliverToBoxAdapter(
-                child: SafeArea(
-                  bottom: false,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // 날짜(좌) + 광고제거 진입(우상단). 설정은 하단 탭으로 이동(T-260614-12).
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                _todayString(),
-                                style: const TextStyle(
-                                  fontFamily: AppTheme.fontFamily,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textFaint,
-                                  letterSpacing: -0.2,
-                                ),
-                              ),
-                            ),
-                            // 광고 제거 구매 버튼 — 이미 제거됐으면 숨김.
-                            ValueListenableBuilder<bool>(
-                              valueListenable: IapService.adsRemoved,
-                              builder: (context, removed, _) {
-                                if (removed) return const SizedBox.shrink();
-                                return IconButton(
-                                  icon: const Icon(Icons.block),
-                                  color: AppColors.textFaint,
-                                  tooltip: '광고 제거',
-                                  onPressed: () async {
-                                    final result =
-                                        await IapService.buyRemoveAds();
-                                    final msg = IapService.purchaseMessage(
-                                      result,
-                                    );
-                                    if (msg != null && context.mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(content: Text(msg)),
-                                      );
-                                    }
-                                  },
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          entries.isEmpty
-                              ? '등록된 약이 없어요'
-                              : '오늘 $takenCount / ${entries.length} 완료',
-                          style: const TextStyle(
-                            fontFamily: AppTheme.fontFamily,
-                            fontSize: 28,
-                            fontWeight: FontWeight.w800,
-                            height: 1.15,
-                            letterSpacing: -0.6,
-                            color: AppColors.textStrong,
-                          ),
-                        ),
-                        if (entries.isNotEmpty) ...[
-                          const SizedBox(height: 16),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(99),
-                            child: LinearProgressIndicator(
-                              value: takenCount / entries.length,
-                              minHeight: 8,
-                              backgroundColor: AppColors.trackGrey,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                takenCount == entries.length
-                                    ? AppColors.success
-                                    : AppColors.primary,
-                              ),
-                            ),
-                          ),
-                        ],
-                        // 축하 배너 자리는 약이 있으면 항상 예약(Visibility maintainSize) —
-                        // 모두복용 체크/해제 시 아래 리스트가 위아래로 점프하지 않게 한다.
-                        // (T-260614-12 카운트다운 제거 후 점프 재발 방지, 아니키 요청)
-                        if (entries.isNotEmpty) ...[
-                          const SizedBox(height: 14),
-                          Visibility(
-                            visible: takenCount == entries.length,
-                            maintainSize: true,
-                            maintainAnimation: true,
-                            maintainState: true,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 14,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.greenSoft,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: AppColors.success.withValues(
-                                    alpha: 0.25,
-                                  ),
-                                  width: 1,
-                                ),
-                              ),
-                              child: const Row(
-                                children: [
-                                  Icon(
-                                    Icons.celebration_rounded,
-                                    size: 20,
-                                    color: AppColors.primary,
-                                  ),
-                                  SizedBox(width: 10),
-                                  Text(
-                                    '오늘 약을 모두 복용했어요!',
-                                    style: TextStyle(
-                                      fontFamily: AppTheme.fontFamily,
-                                      color: AppColors.primaryDark,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 15,
-                                      letterSpacing: -0.2,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
+      backgroundColor: RenewalColors.page,
+      body: Stack(
+        children: [
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 500,
+            child: _MintHead(),
+          ),
+          ValueListenableBuilder<Box<Medicine>>(
+            valueListenable: box.listenable(),
+            builder: (context, box, _) {
+              final now = _now();
+              final entries = _todayEntries(box, now);
+              final nowMinute = now.hour * 60 + now.minute;
+              final nextIndex = pickNextDoseIndex([
+                for (final entry in entries)
+                  (minuteOfDay: entry.minuteOfDay, taken: entry.taken),
+              ], nowMinute);
+              final next = nextIndex == null ? null : entries[nextIndex];
+              final rest = [
+                for (var i = 0; i < entries.length; i++)
+                  if (i != nextIndex) entries[i],
+              ];
+              final takenCount = entries.where((entry) => entry.taken).length;
+              return ListView(
+                physics: entries.isEmpty
+                    ? const NeverScrollableScrollPhysics()
+                    : null,
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  MediaQuery.paddingOf(context).top + 12,
+                  20,
+                  28,
                 ),
-              ),
-
-              if (entries.isEmpty)
-                const SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: _EmptyState(),
-                )
-              else ...[
-                ..._buildGroupedSlivers(context, grouped),
-                const SliverToBoxAdapter(child: SizedBox(height: 100)),
-              ],
-            ],
-          );
-        },
+                children: [
+                  _Head(
+                    dateLabel: _dateLabel(now),
+                    taken: takenCount,
+                    total: entries.length,
+                  ),
+                  const SizedBox(height: 22),
+                  if (entries.isEmpty)
+                    const _EmptyState()
+                  else if (next == null)
+                    const _AllDoneCard()
+                  else
+                    _NowCard(entry: next, nowMinute: nowMinute),
+                  if (rest.isNotEmpty) ...[
+                    const SizedBox(height: 30),
+                    _RestHeader(count: rest.length),
+                    const SizedBox(height: 12),
+                    _RestList(entries: rest),
+                  ],
+                ],
+              );
+            },
+          ),
+        ],
       ),
-      // 푸터(버전·배너)·탭바는 MainShell 이 소유. 떠있는 약등록 FAB 제거 (T-260614-12)
     );
   }
 
-  String _todayString() {
-    final now = DateTime.now();
+  String _dateLabel(DateTime now) {
     const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
     return '${now.month}월 ${now.day}일 ${weekdays[now.weekday - 1]}요일';
   }
 
-  List<_Entry> _todayEntries(Box<Medicine> box) {
-    final today = DateTime.now().weekday; // ISO 1=월 … 7=일
+  List<_Entry> _todayEntries(Box<Medicine> box, DateTime now) {
+    final today = now.weekday;
     final list = <_Entry>[];
-    for (final m in box.values) {
-      if (m.deletedAt != null) continue; // 휴지통 약은 목록 제외 (T-260614-12)
-      // 오늘 요일에 복용하는 약만 노출. 매일 약은 항상 포함.
-      if (!m.isOnWeekday(today)) continue;
-      for (final t in m.times) {
-        list.add(_Entry(medicine: m, time: t));
+    for (final medicine in box.values) {
+      if (medicine.deletedAt != null) continue;
+      if (!medicine.isOnWeekday(today)) continue;
+      for (final time in medicine.times) {
+        list.add(_Entry(medicine: medicine, time: time));
       }
     }
-    list.sort((a, b) {
-      final am = a.time.hour * 60 + a.time.minute;
-      final bm = b.time.hour * 60 + b.time.minute;
-      return am.compareTo(bm);
-    });
+    list.sort((a, b) => a.minuteOfDay.compareTo(b.minuteOfDay));
     return list;
-  }
-
-  Map<String, List<_Entry>> _groupByPeriod(List<_Entry> entries) {
-    final groups = <String, List<_Entry>>{};
-    for (final e in entries) {
-      final period = _periodLabel(e.time.hour);
-      groups.putIfAbsent(period, () => []).add(e);
-    }
-    return groups;
-  }
-
-  String _periodLabel(int hour) {
-    if (hour < 6) return '새벽';
-    if (hour < 12) return '아침';
-    if (hour < 18) return '오후';
-    return '저녁';
-  }
-
-  List<Widget> _buildGroupedSlivers(
-    BuildContext context,
-    Map<String, List<_Entry>> grouped,
-  ) {
-    final slivers = <Widget>[];
-
-    for (final entry in grouped.entries) {
-      slivers.add(
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 10),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    _periodIcon(entry.key),
-                    size: 16,
-                    color: AppColors.primary,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  entry.key,
-                  style: const TextStyle(
-                    fontFamily: AppTheme.fontFamily,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.3,
-                    color: AppColors.textStrong,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '${entry.value.length}',
-                  style: const TextStyle(
-                    fontFamily: AppTheme.fontFamily,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textFaint,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-
-      slivers.add(
-        SliverPadding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, i) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _MedicineCard(
-                  medicine: entry.value[i].medicine,
-                  time: entry.value[i].time,
-                ),
-              ),
-              childCount: entry.value.length,
-            ),
-          ),
-        ),
-      );
-    }
-    return slivers;
-  }
-
-  IconData _periodIcon(String period) {
-    switch (period) {
-      case '새벽':
-        return Icons.dark_mode_outlined;
-      case '아침':
-        return Icons.wb_sunny_outlined;
-      case '오후':
-        return Icons.wb_cloudy_outlined;
-      default:
-        return Icons.nightlight_outlined;
-    }
   }
 }
 
 class _Entry {
+  _Entry({required this.medicine, required this.time});
+
   final Medicine medicine;
   final DoseTime time;
-  _Entry({required this.medicine, required this.time});
+
+  int get minuteOfDay => time.hour * 60 + time.minute;
+  bool get taken => medicine.isTaken(time);
+
+  String get when =>
+      '${homePeriodLabel(time.hour)} ${homeClockLabel(time.hour, time.minute)}';
 }
 
-class _MedicineCard extends StatelessWidget {
-  final Medicine medicine;
-  final DoseTime time;
-  const _MedicineCard({required this.medicine, required this.time});
+class _MintHead extends StatelessWidget {
+  const _MintHead();
 
   @override
   Widget build(BuildContext context) {
-    final taken = medicine.isTaken(time);
-    final accentFill = taken ? AppColors.success : AppColors.primary;
-    final radius = BorderRadius.circular(AppRadius.homeCard);
-    final cardColor = taken ? const Color(0xFFF1F3F5) : AppColors.surface;
-    return DecoratedBox(
-      decoration: appCardDecoration(color: cardColor, radius: radius),
-      child: Material(
-        color: cardColor,
-        borderRadius: radius,
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          borderRadius: radius,
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => MedicineEditScreen(medicine: medicine),
-              ),
-            );
-          },
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
-            child: Row(
+    return const Stack(
+      fit: StackFit.expand,
+      children: [
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                RenewalColors.mintTop,
+                RenewalColors.mintMid,
+                RenewalColors.page,
+              ],
+              stops: [0, 0.55, 1],
+            ),
+          ),
+        ),
+        Positioned(
+          top: -140,
+          right: -110,
+          child: _Blob(size: 360, color: RenewalColors.blobRight),
+        ),
+        Positioned(
+          top: 70,
+          left: -150,
+          child: _Blob(size: 320, color: RenewalColors.blobLeft),
+        ),
+      ],
+    );
+  }
+}
+
+class _Blob extends StatelessWidget {
+  const _Blob({required this.size, required this.color});
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: [color.withValues(alpha: 0.85), color.withValues(alpha: 0)],
+        ),
+      ),
+    );
+  }
+}
+
+class _Head extends StatelessWidget {
+  const _Head({
+    required this.dateLabel,
+    required this.taken,
+    required this.total,
+  });
+
+  final String dateLabel;
+  final int taken;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = total == 0 ? '아직 등록된 약이 없어요' : '오늘 $taken/$total 먹었어요';
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 64,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  decoration: BoxDecoration(
-                    color: accentFill.withValues(alpha: taken ? 0.18 : 0.14),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: accentFill.withValues(alpha: taken ? 0.25 : 0.22),
-                      width: 1,
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        time.periodLabel,
-                        style: const TextStyle(
-                          fontFamily: AppTheme.fontFamily,
-                          color: AppColors.primaryDark,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 11,
-                          letterSpacing: -0.1,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${time.hour == 0 ? 12 : (time.hour > 12 ? time.hour - 12 : time.hour)}:${time.minute.toString().padLeft(2, '0')}',
-                        style: const TextStyle(
-                          fontFamily: AppTheme.fontFamily,
-                          color: AppColors.primaryDark,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                    ],
-                  ),
+                Text(
+                  dateLabel,
+                  style: renewalStyle(14, FontWeight.w600, RenewalColors.date),
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        medicine.name,
-                        style: TextStyle(
-                          fontFamily: AppTheme.fontFamily,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                          decoration: taken ? TextDecoration.lineThrough : null,
-                          color: taken
-                              ? AppColors.textFaint
-                              : AppColors.textStrong,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                      if (medicine.dosage.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.medical_services_outlined,
-                              size: 14,
-                              color: AppColors.textFaint,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              medicine.dosage,
-                              style: const TextStyle(
-                                fontFamily: AppTheme.fontFamily,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w400,
-                                color: AppColors.textBody,
-                                letterSpacing: -0.2,
+                const SizedBox(height: 4),
+                Text(
+                  title,
+                  style: renewalStyle(24, FontWeight.w800, RenewalColors.ink),
+                ),
+              ],
+            ),
+          ),
+          if (total > 0)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10, left: 12),
+              child: _ProgressBars(taken: taken, total: total),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProgressBars extends StatelessWidget {
+  const _ProgressBars({required this.taken, required this.total});
+
+  final int taken;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final natural = 22.0 * total + 4.0 * (total - 1);
+    if (natural <= 120) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [for (var i = 0; i < total; i++) _bar(i, width: 22)],
+      );
+    }
+    return SizedBox(
+      width: 120,
+      child: Row(
+        children: [for (var i = 0; i < total; i++) Expanded(child: _bar(i))],
+      ),
+    );
+  }
+
+  Widget _bar(int index, {double? width}) {
+    return Container(
+      width: width,
+      height: 8,
+      margin: EdgeInsets.only(left: index == 0 ? 0 : 4),
+      decoration: BoxDecoration(
+        color: index < taken
+            ? RenewalColors.green
+            : Colors.white.withValues(alpha: 0.75),
+        borderRadius: BorderRadius.circular(4),
+      ),
+    );
+  }
+}
+
+class _NowCard extends StatelessWidget {
+  const _NowCard({required this.entry, required this.nowMinute});
+
+  final _Entry entry;
+  final int nowMinute;
+
+  @override
+  Widget build(BuildContext context) {
+    final medicine = entry.medicine;
+    final look = lookForMedicineName(medicine.name);
+    final remain = doseRemainText(entry.minuteOfDay, nowMinute);
+    return DecoratedBox(
+      decoration: renewalCardDecoration(
+        radius: RenewalRadius.nowCard,
+        shadows: renewalNowShadows,
+      ),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(RenewalRadius.nowCard),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              InkWell(
+                onTap: () => _open(context),
+                borderRadius: BorderRadius.circular(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.fromLTRB(10, 6, 12, 6),
+                          decoration: BoxDecoration(
+                            color: RenewalColors.green50,
+                            borderRadius: BorderRadius.circular(99),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 7,
+                                height: 7,
+                                decoration: const BoxDecoration(
+                                  color: RenewalColors.green,
+                                  shape: BoxShape.circle,
+                                ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 6),
+                              Text(
+                                '다음 약',
+                                style: renewalStyle(
+                                  13,
+                                  FontWeight.w700,
+                                  RenewalColors.greenDeep,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Spacer(),
+                        const Icon(
+                          Icons.schedule_rounded,
+                          size: 18,
+                          color: RenewalColors.greenDeep,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          remain,
+                          style: renewalStyle(
+                            15,
+                            FontWeight.w800,
+                            RenewalColors.greenDeep,
+                          ),
                         ),
                       ],
-                      // 요일 정보는 모든 약 카드에 항상 표시(매일→"매일", 특정요일→"월·수·금").
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.event_repeat_outlined,
-                            size: 14,
-                            color: AppColors.textFaint,
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                entry.when,
+                                style: renewalStyle(
+                                  16,
+                                  FontWeight.w600,
+                                  RenewalColors.body,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                medicine.name,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: renewalStyle(
+                                  40,
+                                  FontWeight.w800,
+                                  RenewalColors.ink,
+                                  height: 1.2,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  if (medicine.dosage.isNotEmpty) ...[
+                                    _Tag(text: medicine.dosage),
+                                    const SizedBox(width: 6),
+                                  ],
+                                  _Tag(text: medicine.weekdayLabel),
+                                ],
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            medicine.weekdayLabel,
-                            style: const TextStyle(
-                              fontFamily: AppTheme.fontFamily,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w400,
-                              color: AppColors.textBody,
-                              letterSpacing: -0.2,
+                        ),
+                        Container(
+                          width: 122,
+                          height: 122,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: RadialGradient(
+                              colors: [
+                                look.soft,
+                                Color.lerp(look.soft, look.cap, 0.6)!,
+                              ],
                             ),
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
+                          child: PillGlyph(look: look, size: 86, shadow: true),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                _TakenButton(
-                  taken: taken,
-                  semanticsPrefix: '${medicine.name} ${time.format()}',
-                  onTap: () => medicine.toggleTaken(time),
+              ),
+              const SizedBox(height: 24),
+              _TakeButton(
+                label: takenButtonSemanticsLabel(
+                  prefix: '${medicine.name} ${entry.time.format()}',
+                  taken: false,
+                ),
+                onTap: () => medicine.toggleTaken(entry.time),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.notifications_none_rounded,
+                    size: 16,
+                    color: RenewalColors.faint,
+                  ),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      '${entry.when}에 알림을 보내드릴게요',
+                      textAlign: TextAlign.center,
+                      style: renewalStyle(
+                        13,
+                        FontWeight.w600,
+                        RenewalColors.faint,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _open(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => MedicineEditScreen(medicine: entry.medicine),
+      ),
+    );
+  }
+}
+
+class _TakeButton extends StatelessWidget {
+  const _TakeButton({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      button: true,
+      label: label,
+      onTap: onTap,
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          key: const Key('home-take-button'),
+          onTap: onTap,
+          child: Container(
+            height: 60,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(RenewalRadius.button),
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF30D46D), Color(0xFF1FBA56)],
+              ),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x4D22C55E),
+                  blurRadius: 18,
+                  offset: Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.check_rounded, size: 24, color: Colors.white),
+                const SizedBox(width: 8),
+                Text(
+                  '먹었어요',
+                  style: renewalStyle(18, FontWeight.w700, Colors.white),
                 ),
               ],
             ),
@@ -470,49 +554,231 @@ class _MedicineCard extends StatelessWidget {
   }
 }
 
-class _TakenButton extends StatelessWidget {
-  final bool taken;
-  final String semanticsPrefix;
-  final VoidCallback onTap;
-  const _TakenButton({
-    required this.taken,
-    required this.semanticsPrefix,
-    required this.onTap,
-  });
+class _Tag extends StatelessWidget {
+  const _Tag({required this.text});
+
+  final String text;
 
   @override
   Widget build(BuildContext context) {
-    final label = takenButtonSemanticsLabel(
-      prefix: semanticsPrefix,
-      taken: taken,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: RenewalColors.fill,
+        borderRadius: BorderRadius.circular(RenewalRadius.tag),
+      ),
+      child: Text(
+        text,
+        style: renewalStyle(13, FontWeight.w600, RenewalColors.body),
+      ),
     );
-    return Semantics(
-      container: true,
-      button: true,
-      selected: taken,
-      label: label,
-      onTap: onTap,
-      child: ExcludeSemantics(
-        child: GestureDetector(
-          onTap: onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: taken ? AppColors.success : Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: taken ? AppColors.success : AppColors.textFaint,
-                width: taken ? 0 : 1.5,
+  }
+}
+
+class _RestHeader extends StatelessWidget {
+  const _RestHeader({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(
+        children: [
+          Text(
+            '오늘 나머지',
+            style: renewalStyle(18, FontWeight.w800, RenewalColors.ink),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '$count',
+            style: renewalStyle(16, FontWeight.w700, RenewalColors.hush),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RestList extends StatelessWidget {
+  const _RestList({required this.entries});
+
+  final List<_Entry> entries;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: renewalCardDecoration(),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(RenewalRadius.restCard),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          children: [
+            for (final (i, entry) in entries.indexed) ...[
+              if (i > 0)
+                const Divider(
+                  height: 1,
+                  thickness: 1,
+                  indent: 72,
+                  endIndent: 18,
+                  color: RenewalColors.line,
+                ),
+              _RestRow(entry: entry),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RestRow extends StatelessWidget {
+  const _RestRow({required this.entry});
+
+  final _Entry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final taken = entry.taken;
+    final medicine = entry.medicine;
+    final look = lookForMedicineName(medicine.name);
+    final detail = medicine.dosage.isEmpty
+        ? entry.when
+        : '${entry.when} · ${medicine.dosage}';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+      child: Row(
+        children: [
+          Expanded(
+            child: InkWell(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => MedicineEditScreen(medicine: medicine),
+                  ),
+                );
+              },
+              child: Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: look.soft,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Opacity(
+                      opacity: taken ? 0.55 : 1,
+                      child: PillGlyph(look: look, size: 27),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          medicine.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: renewalStyle(
+                            16,
+                            FontWeight.w700,
+                            taken ? RenewalColors.faint : RenewalColors.ink,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(text: detail),
+                              if (taken)
+                                TextSpan(
+                                  text: '  먹었어요',
+                                  style: renewalStyle(
+                                    13,
+                                    FontWeight.w700,
+                                    RenewalColors.greenDeep,
+                                  ),
+                                ),
+                            ],
+                          ),
+                          style: renewalStyle(
+                            13,
+                            FontWeight.w400,
+                            RenewalColors.faint,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            child: Icon(
-              Icons.check_rounded,
-              color: taken ? Colors.white : AppColors.textFaint,
-              size: 22,
+          ),
+          Semantics(
+            container: true,
+            button: true,
+            selected: taken,
+            label: takenButtonSemanticsLabel(
+              prefix: '${medicine.name} ${entry.time.format()}',
+              taken: taken,
+            ),
+            onTap: () => medicine.toggleTaken(entry.time),
+            child: ExcludeSemantics(
+              child: RenewalCheck(
+                taken: taken,
+                size: 32,
+                onTap: () => medicine.toggleTaken(entry.time),
+              ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AllDoneCard extends StatelessWidget {
+  const _AllDoneCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      key: const Key('home-all-done'),
+      decoration: renewalCardDecoration(
+        radius: RenewalRadius.nowCard,
+        shadows: renewalNowShadows,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(22, 28, 22, 28),
+        child: Column(
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(
+                color: RenewalColors.green,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.check_rounded,
+                size: 40,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '오늘 약을 다 먹었어요',
+              textAlign: TextAlign.center,
+              style: renewalStyle(22, FontWeight.w800, RenewalColors.ink),
+            ),
+          ],
         ),
       ),
     );
@@ -524,49 +790,45 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    return DecoratedBox(
+      key: const Key('home-empty'),
+      decoration: renewalCardDecoration(
+        radius: RenewalRadius.nowCard,
+        shadows: renewalNowShadows,
+      ),
       child: Padding(
-        padding: const EdgeInsets.only(bottom: 80),
+        padding: const EdgeInsets.fromLTRB(22, 28, 22, 28),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(28),
+              width: 122,
+              height: 122,
+              alignment: Alignment.center,
               decoration: BoxDecoration(
+                shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    AppColors.primary.withValues(alpha: 0.18),
-                    AppColors.primary.withValues(alpha: 0.04),
+                    PillLook.mascot.soft,
+                    Color.lerp(PillLook.mascot.soft, PillLook.mascot.cap, 0.6)!,
                   ],
                 ),
-                shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.medication_rounded,
-                size: 64,
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              '아직 등록된 약이 없어요',
-              style: TextStyle(
-                fontFamily: AppTheme.fontFamily,
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.3,
-                color: AppColors.textStrong,
+              child: const PillGlyph(
+                look: PillLook.mascot,
+                size: 86,
+                face: true,
+                shadow: true,
               ),
             ),
-            const SizedBox(height: 8),
-            const Text(
-              '아래 버튼을 눌러 약을 추가해 보세요',
-              style: TextStyle(
-                fontFamily: AppTheme.fontFamily,
-                fontSize: 15,
-                fontWeight: FontWeight.w400,
-                color: AppColors.textBody,
-                letterSpacing: -0.2,
+            const SizedBox(height: 16),
+            Text(
+              '아래 + 약등록을 눌러\n약을 추가해 보세요',
+              textAlign: TextAlign.center,
+              style: renewalStyle(
+                16,
+                FontWeight.w600,
+                RenewalColors.body,
+                height: 1.45,
               ),
             ),
           ],
