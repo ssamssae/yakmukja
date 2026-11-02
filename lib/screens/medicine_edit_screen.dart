@@ -6,6 +6,8 @@ import '../main.dart';
 import '../models/medicine.dart';
 import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
+import '../theme/renewal_theme.dart';
+import '../widgets/pill_glyph.dart';
 
 class MedicineEditScreen extends StatefulWidget {
   final Medicine? medicine;
@@ -63,9 +65,9 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (ctx) {
         return SafeArea(
@@ -79,13 +81,23 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                     children: [
                       Text(
                         '복용량 선택',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w700),
+                        style: renewalStyle(
+                          17,
+                          FontWeight.w800,
+                          RenewalColors.ink,
+                        ),
                       ),
                       const Spacer(),
                       TextButton(
                         onPressed: () => Navigator.pop(ctx),
-                        child: const Text('취소'),
+                        child: Text(
+                          '취소',
+                          style: renewalStyle(
+                            15,
+                            FontWeight.w700,
+                            RenewalColors.faint,
+                          ),
+                        ),
                       ),
                       TextButton(
                         onPressed: () {
@@ -94,7 +106,14 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                           );
                           Navigator.pop(ctx);
                         },
-                        child: const Text('확인'),
+                        child: Text(
+                          '확인',
+                          style: renewalStyle(
+                            15,
+                            FontWeight.w800,
+                            RenewalColors.greenDeep,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -111,9 +130,10 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                         Center(
                           child: Text(
                             '$d알',
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w500,
+                            style: renewalStyle(
+                              22,
+                              FontWeight.w600,
+                              RenewalColors.ink,
                             ),
                           ),
                         ),
@@ -138,9 +158,9 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (ctx) {
         return SafeArea(
@@ -154,13 +174,23 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                     children: [
                       Text(
                         '복용 시간',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w700),
+                        style: renewalStyle(
+                          17,
+                          FontWeight.w800,
+                          RenewalColors.ink,
+                        ),
                       ),
                       const Spacer(),
                       TextButton(
                         onPressed: () => Navigator.pop(ctx),
-                        child: const Text('취소'),
+                        child: Text(
+                          '취소',
+                          style: renewalStyle(
+                            15,
+                            FontWeight.w700,
+                            RenewalColors.faint,
+                          ),
+                        ),
                       ),
                       TextButton(
                         onPressed: () {
@@ -196,7 +226,14 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                           });
                           Navigator.pop(ctx);
                         },
-                        child: const Text('추가'),
+                        child: Text(
+                          '추가',
+                          style: renewalStyle(
+                            15,
+                            FontWeight.w800,
+                            RenewalColors.greenDeep,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -212,12 +249,26 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                           ),
                           itemExtent: 40,
                           onSelectedItemChanged: (i) => amPmIndex = i,
-                          children: const [
+                          children: [
                             Center(
-                              child: Text('오전', style: TextStyle(fontSize: 18)),
+                              child: Text(
+                                '오전',
+                                style: renewalStyle(
+                                  18,
+                                  FontWeight.w600,
+                                  RenewalColors.ink,
+                                ),
+                              ),
                             ),
                             Center(
-                              child: Text('오후', style: TextStyle(fontSize: 18)),
+                              child: Text(
+                                '오후',
+                                style: renewalStyle(
+                                  18,
+                                  FontWeight.w600,
+                                  RenewalColors.ink,
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -235,7 +286,11 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                               Center(
                                 child: Text(
                                   '$h시',
-                                  style: const TextStyle(fontSize: 18),
+                                  style: renewalStyle(
+                                    18,
+                                    FontWeight.w600,
+                                    RenewalColors.ink,
+                                  ),
                                 ),
                               ),
                           ],
@@ -254,7 +309,11 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                               Center(
                                 child: Text(
                                   '${m.toString().padLeft(2, '0')}분',
-                                  style: const TextStyle(fontSize: 18),
+                                  style: renewalStyle(
+                                    18,
+                                    FontWeight.w600,
+                                    RenewalColors.ink,
+                                  ),
                                 ),
                               ),
                           ],
@@ -334,14 +393,23 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('약 삭제'),
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text(
+          '약 삭제',
+          style: renewalStyle(20, FontWeight.w800, RenewalColors.ink),
+        ),
         content: Text(
           '"${widget.medicine!.name}"을(를) 삭제할까요?\n삭제한 약은 휴지통에서 30일간 복원할 수 있어요.',
+          style: renewalStyle(15, FontWeight.w500, RenewalColors.body),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('취소'),
+            child: Text(
+              '취소',
+              style: renewalStyle(15, FontWeight.w700, RenewalColors.faint),
+            ),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
@@ -363,237 +431,344 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final top = MediaQuery.paddingOf(context).top;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.isEditing ? '약 수정' : '약 등록'),
-        actions: [
-          if (widget.isEditing)
-            IconButton(
-              tooltip: '삭제',
-              icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
-              onPressed: _delete,
-            ),
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: TextButton(
-              onPressed: _isSaving ? null : _save,
-              child: const Text(
-                '저장',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primary,
-                ),
-              ),
-            ),
+      backgroundColor: RenewalColors.page,
+      resizeToAvoidBottomInset: true,
+      body: Stack(
+        children: [
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 280,
+            child: _EditBackdrop(),
           ),
-        ],
-      ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
-          children: [
-            // 약 이름
-            const _SectionLabel(label: '약 이름'),
-            const SizedBox(height: 10),
-            TextFormField(
-              controller: _nameCtrl,
-              decoration: const InputDecoration(
-                hintText: '예: 비타민 D, 혈압약',
-                prefixIcon: Icon(
-                  Icons.medication_rounded,
-                  color: AppColors.primary,
-                ),
-              ),
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? '이름을 입력해 주세요.' : null,
-            ),
-
-            const SizedBox(height: 28),
-
-            // 복용량 섹션 (복용시간과 동일 레이아웃)
-            Row(
-              children: [
-                const _SectionLabel(label: '복용량'),
-                const Spacer(),
-                _AddPillButton(
-                  semanticsLabel: '복용량 추가',
-                  onTap: _showDosagePicker,
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            if (_dosage == null)
-              _EmptyPlaceholder(text: '복용량 추가하기', onTap: _showDosagePicker)
-            else
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Chip(
-                  avatar: const Icon(
-                    Icons.medical_services_rounded,
-                    size: 18,
-                    color: AppColors.primary,
-                  ),
-                  label: Text(
-                    _dosage!,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  deleteIcon: const Icon(Icons.close_rounded, size: 18),
-                  onDeleted: () => setState(() => _dosage = null),
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                  side: BorderSide(
-                    color: AppColors.primary.withValues(alpha: 0.3),
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-
-            const SizedBox(height: 28),
-
-            // 복용 시간 섹션
-            Row(
-              children: [
-                const _SectionLabel(label: '복용 시간'),
-                const Spacer(),
-                _AddPillButton(
-                  semanticsLabel: '복용 시간 추가',
-                  onTap: _showTimePicker,
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            if (_times.isEmpty)
-              _EmptyPlaceholder(text: '복용 시간 추가하기', onTap: _showTimePicker)
-            else
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (int i = 0; i < _times.length; i++)
-                        Chip(
-                          avatar: const Icon(
-                            Icons.notifications_active_rounded,
-                            size: 18,
-                            color: AppColors.primary,
-                          ),
-                          label: Text(
-                            _times[i].format(),
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          deleteIcon: const Icon(Icons.close_rounded, size: 18),
-                          onDeleted: () => setState(() => _times.removeAt(i)),
-                          backgroundColor: AppColors.primary.withValues(
-                            alpha: 0.1,
-                          ),
-                          side: BorderSide(
-                            color: AppColors.primary.withValues(alpha: 0.3),
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHigh.withValues(
-                        alpha: 0.5,
-                      ),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
+          Column(
+            children: [
+              Expanded(
+                child: Form(
+                  key: _formKey,
+                  child: SingleChildScrollView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    padding: EdgeInsets.fromLTRB(20, top + 8, 20, 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Icon(
-                          Icons.notifications_outlined,
-                          size: 16,
-                          color: theme.colorScheme.outline,
+                        _Header(
+                          title: widget.isEditing ? '약 수정' : '약 등록',
+                          onClose: () => Navigator.maybePop(context),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            '설정된 시간에 푸시 알림이 발송됩니다',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.outline,
-                            ),
+                        const SizedBox(height: 10),
+                        _NameCard(controller: _nameCtrl),
+                        const SizedBox(height: 10),
+                        _SectionCard(
+                          title: '복용량',
+                          trailing: _AddPillButton(
+                            semanticsLabel: '복용량 추가',
+                            onTap: _showDosagePicker,
+                          ),
+                          child: _dosage == null
+                              ? _EmptyPlaceholder(
+                                  text: '복용량 추가하기',
+                                  onTap: _showDosagePicker,
+                                )
+                              : Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: _ValueChip(
+                                    label: _dosage!,
+                                    onDeleted: () =>
+                                        setState(() => _dosage = null),
+                                  ),
+                                ),
+                        ),
+                        const SizedBox(height: 10),
+                        _SectionCard(
+                          title: '복용 시간',
+                          trailing: _AddPillButton(
+                            semanticsLabel: '복용 시간 추가',
+                            onTap: _showTimePicker,
+                          ),
+                          child: _times.isEmpty
+                              ? _EmptyPlaceholder(
+                                  text: '복용 시간 추가하기',
+                                  onTap: _showTimePicker,
+                                )
+                              : Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      children: [
+                                        for (int i = 0; i < _times.length; i++)
+                                          _ValueChip(
+                                            label: _times[i].format(),
+                                            icon: Icons.schedule_rounded,
+                                            onDeleted: () => setState(
+                                              () => _times.removeAt(i),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.notifications_none_rounded,
+                                          size: 16,
+                                          color: RenewalColors.faint,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            '설정된 시간에 푸시 알림이 발송됩니다',
+                                            style: renewalStyle(
+                                              12,
+                                              FontWeight.w600,
+                                              RenewalColors.faint,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                        ),
+                        const SizedBox(height: 10),
+                        _SectionCard(
+                          title: '복용 요일',
+                          trailing: _AllDaysToggle(
+                            allSelected: _weekdays.length == 7,
+                            onTap: () {
+                              setState(() {
+                                if (_weekdays.length == 7) {
+                                  // 매일 → 평일(월~금)로 빠른 전환(전체 해제 시 저장 불가라 평일로).
+                                  _weekdays
+                                    ..clear()
+                                    ..addAll([1, 2, 3, 4, 5]);
+                                } else {
+                                  _weekdays
+                                    ..clear()
+                                    ..addAll(Medicine.allWeekdays);
+                                }
+                              });
+                            },
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final size = ((constraints.maxWidth - 36) / 7)
+                                      .clamp(30.0, 40.0);
+                                  return Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      for (int wd = 1; wd <= 7; wd++)
+                                        _WeekdayChip(
+                                          label: _weekdayLabels[wd - 1],
+                                          selected: _weekdays.contains(wd),
+                                          size: size,
+                                          onTap: () {
+                                            setState(() {
+                                              if (_weekdays.contains(wd)) {
+                                                _weekdays.remove(wd);
+                                              } else {
+                                                _weekdays.add(wd);
+                                              }
+                                            });
+                                          },
+                                        ),
+                                    ],
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                _weekdays.length == 7
+                                    ? '매일 알림을 받아요'
+                                    : _weekdays.isEmpty
+                                    ? '요일을 1개 이상 선택해 주세요'
+                                    : '선택한 요일에만 알림을 받아요',
+                                style: renewalStyle(
+                                  12,
+                                  FontWeight.w600,
+                                  RenewalColors.faint,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
+                ),
+              ),
+              _SaveBar(
+                busy: _isSaving,
+                onSave: _isSaving ? null : _save,
+                onDelete: widget.isEditing ? _delete : null,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Header extends StatelessWidget {
+  const _Header({required this.title, required this.onClose});
+
+  final String title;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Tooltip(
+              message: '취소',
+              child: Material(
+                color: Colors.white,
+                shape: const CircleBorder(),
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: onClose,
+                  child: const SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: Icon(
+                      Icons.arrow_back_rounded,
+                      color: RenewalColors.ink,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: renewalStyle(28, FontWeight.w800, RenewalColors.ink),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          '이름과 먹는 시간을 정해 주세요',
+          style: renewalStyle(15, FontWeight.w600, RenewalColors.body),
+        ),
+      ],
+    );
+  }
+}
+
+class _NameCard extends StatelessWidget {
+  const _NameCard({required this.controller});
+
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: renewalCardDecoration(
+        radius: RenewalRadius.nowCard,
+        shadows: renewalNowShadows,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 12, 14, 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '약 이름',
+                    style: renewalStyle(
+                      13,
+                      FontWeight.w700,
+                      RenewalColors.greenDeep,
+                    ),
+                  ),
+                  TextFormField(
+                    controller: controller,
+                    maxLines: 2,
+                    minLines: 1,
+                    textInputAction: TextInputAction.done,
+                    style: renewalStyle(
+                      26,
+                      FontWeight.w800,
+                      RenewalColors.ink,
+                      height: 1.2,
+                    ),
+                    cursorColor: RenewalColors.green,
+                    decoration: InputDecoration(
+                      hintText: '예: 비타민 D, 혈압약',
+                      hintStyle: renewalStyle(
+                        20,
+                        FontWeight.w700,
+                        RenewalColors.hush,
+                        height: 1.2,
+                      ),
+                      filled: false,
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 6),
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      errorBorder: InputBorder.none,
+                      focusedErrorBorder: InputBorder.none,
+                      errorStyle: renewalStyle(
+                        13,
+                        FontWeight.w600,
+                        AppColors.danger,
+                      ),
+                    ),
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? '이름을 입력해 주세요.' : null,
+                  ),
                 ],
               ),
-
-            const SizedBox(height: 28),
-
-            // 복용 요일 섹션 — 전부 선택 = 매일.
-            Row(
-              children: [
-                const _SectionLabel(label: '복용 요일'),
-                const Spacer(),
-                _AllDaysToggle(
-                  allSelected: _weekdays.length == 7,
-                  onTap: () {
-                    setState(() {
-                      if (_weekdays.length == 7) {
-                        // 매일 → 평일(월~금)로 빠른 전환(전체 해제 시 저장 불가라 평일로).
-                        _weekdays
-                          ..clear()
-                          ..addAll([1, 2, 3, 4, 5]);
-                      } else {
-                        _weekdays
-                          ..clear()
-                          ..addAll(Medicine.allWeekdays);
-                      }
-                    });
-                  },
-                ),
-              ],
             ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (int wd = 1; wd <= 7; wd++)
-                  _WeekdayChip(
-                    label: _weekdayLabels[wd - 1],
-                    selected: _weekdays.contains(wd),
-                    onTap: () {
-                      setState(() {
-                        if (_weekdays.contains(wd)) {
-                          _weekdays.remove(wd);
-                        } else {
-                          _weekdays.add(wd);
-                        }
-                      });
-                    },
+            const SizedBox(width: 8),
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: controller,
+              builder: (context, value, _) {
+                final typed = value.text.trim();
+                final look = typed.isEmpty
+                    ? PillLook.mascot
+                    : lookForMedicineName(typed);
+                return Container(
+                  width: 76,
+                  height: 76,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: RadialGradient(
+                      colors: [
+                        look.soft,
+                        Color.lerp(look.soft, look.cap, 0.6)!,
+                      ],
+                    ),
                   ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _weekdays.length == 7
-                  ? '매일 알림을 받아요'
-                  : _weekdays.isEmpty
-                  ? '요일을 1개 이상 선택해 주세요'
-                  : '선택한 요일에만 알림을 받아요',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.outline,
-              ),
+                  child: PillGlyph(
+                    look: look,
+                    size: 54,
+                    face: typed.isEmpty,
+                    shadow: true,
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -602,19 +777,88 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
   }
 }
 
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({required this.title, required this.child, this.trailing});
+
+  final String title;
+  final Widget child;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: renewalCardDecoration(),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  title,
+                  style: renewalStyle(16, FontWeight.w800, RenewalColors.ink),
+                ),
+                const Spacer(),
+                ?trailing,
+              ],
+            ),
+            const SizedBox(height: 8),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ValueChip extends StatelessWidget {
+  const _ValueChip({
+    required this.label,
+    required this.onDeleted,
+    this.icon = Icons.medication_rounded,
+  });
+
+  final String label;
+  final VoidCallback onDeleted;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Chip(
+      avatar: Icon(icon, size: 18, color: RenewalColors.greenDeep),
+      label: Text(
+        label,
+        style: renewalStyle(14, FontWeight.w700, RenewalColors.ink),
+      ),
+      deleteIcon: const Icon(
+        Icons.close_rounded,
+        size: 18,
+        color: RenewalColors.faint,
+      ),
+      onDeleted: onDeleted,
+      backgroundColor: RenewalColors.fill,
+      side: BorderSide.none,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    );
+  }
+}
+
 class _WeekdayChip extends StatelessWidget {
   final String label;
   final bool selected;
+  final double size;
   final VoidCallback onTap;
   const _WeekdayChip({
     required this.label,
     required this.selected,
+    required this.size,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Semantics(
       button: true,
       selected: selected,
@@ -625,33 +869,23 @@ class _WeekdayChip extends StatelessWidget {
           color: Colors.transparent,
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              width: 40,
-              height: 40,
-              alignment: Alignment.center,
+            customBorder: const CircleBorder(),
+            child: Ink(
+              width: size,
+              height: size,
               decoration: BoxDecoration(
-                color: selected
-                    ? AppColors.primary.withValues(alpha: 0.12)
-                    : theme.colorScheme.surfaceContainerHigh.withValues(
-                        alpha: 0.5,
-                      ),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: selected
-                      ? AppColors.primary.withValues(alpha: 0.4)
-                      : theme.colorScheme.outline.withValues(alpha: 0.25),
-                  width: 1,
-                ),
+                shape: BoxShape.circle,
+                color: selected ? RenewalColors.green : RenewalColors.fill,
+                border: selected ? null : Border.all(color: RenewalColors.ring),
               ),
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                  color: selected
-                      ? AppColors.primary
-                      : theme.colorScheme.outline,
+              child: Center(
+                child: Text(
+                  label,
+                  style: renewalStyle(
+                    14,
+                    FontWeight.w800,
+                    selected ? Colors.white : RenewalColors.body,
+                  ),
                 ),
               ),
             ),
@@ -670,59 +904,18 @@ class _AllDaysToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.transparent,
+      color: RenewalColors.green50,
+      borderRadius: BorderRadius.circular(999),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.35),
-              width: 1,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                allSelected
-                    ? Icons.event_repeat_rounded
-                    : Icons.done_all_rounded,
-                size: 16,
-                color: AppColors.primary,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                allSelected ? '매일' : '매일 선택',
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 13,
-                ),
-              ),
-            ],
+        borderRadius: BorderRadius.circular(999),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Text(
+            allSelected ? '매일' : '매일 선택',
+            style: renewalStyle(13, FontWeight.w700, RenewalColors.greenDeep),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _SectionLabel extends StatelessWidget {
-  final String label;
-  const _SectionLabel({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-        fontWeight: FontWeight.w800,
-        color: AppColors.primary,
-        letterSpacing: 0.3,
       ),
     );
   }
@@ -742,31 +935,28 @@ class _AddPillButton extends StatelessWidget {
       onTap: onTap,
       child: ExcludeSemantics(
         child: Material(
-          color: Colors.transparent,
+          color: RenewalColors.green50,
+          borderRadius: BorderRadius.circular(999),
           child: InkWell(
             onTap: onTap,
-            borderRadius: BorderRadius.circular(10),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.35),
-                  width: 1,
-                ),
-              ),
-              child: const Row(
+            borderRadius: BorderRadius.circular(999),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.add_rounded, size: 16, color: AppColors.primary),
-                  SizedBox(width: 4),
+                  const Icon(
+                    Icons.add_rounded,
+                    size: 16,
+                    color: RenewalColors.greenDeep,
+                  ),
+                  const SizedBox(width: 2),
                   Text(
                     '추가',
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
+                    style: renewalStyle(
+                      13,
+                      FontWeight.w700,
+                      RenewalColors.greenDeep,
                     ),
                   ),
                 ],
@@ -786,41 +976,183 @@ class _EmptyPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Material(
-      color: Colors.transparent,
+      color: RenewalColors.green50,
+      borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 16),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.07),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.24),
-              width: 1,
-            ),
-          ),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.add_circle_outline_rounded,
+              const Icon(
+                Icons.add_rounded,
                 size: 18,
-                color: AppColors.primary,
+                color: RenewalColors.greenDeep,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               Text(
                 text,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w700,
+                style: renewalStyle(
+                  15,
+                  FontWeight.w700,
+                  RenewalColors.greenDeep,
                 ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SaveBar extends StatelessWidget {
+  const _SaveBar({required this.busy, required this.onSave, this.onDelete});
+
+  final bool busy;
+  final VoidCallback? onSave;
+  final VoidCallback? onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: RenewalColors.page,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 10),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _SaveButton(busy: busy, onTap: onSave),
+              if (onDelete != null)
+                TextButton(
+                  onPressed: onDelete,
+                  child: Text(
+                    '삭제',
+                    style: renewalStyle(15, FontWeight.w700, AppColors.danger),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SaveButton extends StatelessWidget {
+  const _SaveButton({required this.busy, required this.onTap});
+
+  final bool busy;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(RenewalRadius.button),
+        child: Ink(
+          height: 60,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(RenewalRadius.button),
+            gradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF30D46D), Color(0xFF1FBA56)],
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x4D22C55E),
+                blurRadius: 18,
+                offset: Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (busy) ...[
+                const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.4,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Text(
+                '저장',
+                style: renewalStyle(18, FontWeight.w700, Colors.white),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EditBackdrop extends StatelessWidget {
+  const _EditBackdrop();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Stack(
+      fit: StackFit.expand,
+      children: [
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                RenewalColors.mintTop,
+                RenewalColors.mintMid,
+                RenewalColors.page,
+              ],
+              stops: [0, 0.55, 1],
+            ),
+          ),
+        ),
+        Positioned(
+          top: -120,
+          right: -90,
+          child: _Blob(size: 280, color: RenewalColors.blobRight),
+        ),
+        Positioned(
+          top: 36,
+          left: -130,
+          child: _Blob(size: 240, color: RenewalColors.blobLeft),
+        ),
+      ],
+    );
+  }
+}
+
+class _Blob extends StatelessWidget {
+  const _Blob({required this.size, required this.color});
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: [color.withValues(alpha: 0.85), color.withValues(alpha: 0)],
         ),
       ),
     );
