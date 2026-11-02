@@ -43,6 +43,10 @@ post_install do |installer|
     # 디바이스 빌드(iphoneos) 에서는 x86_64 슬라이스를 항상 제외한다.
     target.build_configurations.each do |config|
       config.build_settings['EXCLUDED_ARCHS[sdk=iphoneos*]'] = 'x86_64'
+      # Xcode 27 은 파드 타깃이 자기 배포 타깃(9.0~13.0)을 그대로 두면 아카이브를 거부한다
+      # ("supported deployment target versions is 15.0 to 27.1.x", 2026-11-02 아테나 실측, T-261102-018).
+      # 앱 자체가 이미 iOS 15.0 이상이라(platform :ios, '15.0') 사용자 영향은 없다. 살아있음 Podfile 과 같은 설정.
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
     end
   end
 end
