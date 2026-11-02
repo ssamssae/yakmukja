@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
-import '../theme/app_theme.dart';
+import '../theme/renewal_theme.dart';
 
 class VersionFooter extends StatelessWidget {
   const VersionFooter({super.key});
@@ -16,16 +16,10 @@ class VersionFooter extends StatelessWidget {
         final version = snapshot.data?.version ?? '';
         final label = version.isEmpty ? '마이너스베타스튜디오' : 'v$version · 마이너스베타스튜디오';
         return Padding(
-          padding: const EdgeInsets.only(top: 4, bottom: 4),
+          padding: const EdgeInsets.only(top: 2, bottom: 6),
           child: Text(
             label,
-            style: const TextStyle(
-              fontFamily: AppTheme.fontFamily,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textFaint,
-              letterSpacing: -0.1,
-            ),
+            style: renewalStyle(12, FontWeight.w600, RenewalColors.faint),
           ),
         );
       },

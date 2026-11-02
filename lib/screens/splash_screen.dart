@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_theme.dart';
+import '../theme/renewal_theme.dart';
 import 'main_shell.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
   static const String logoAssetPath = 'assets/images/logo.png';
+  static const Key iconKey = Key('splash-app-icon');
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -16,9 +17,8 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // 네이티브 런치스크린(flutter_native_splash, 동일 로고/배경)에서 이어받으므로
-    // 진입 fade-in 없이 즉시 동일 화면을 그려 handoff 깜빡임을 막는다.
-    // 총 체류 1.5초 후 홈으로 페이드아웃. (T-260614-11 (A))
+    // 네이티브 시작 화면은 흰 바탕이다. 같은 흰 바탕 가운데에 앱 아이콘을 바로 그려
+    // 색이 바뀌는 깜빡임을 막는다. 1.5초 뒤 홈으로 페이드한다.
     Future.delayed(const Duration(milliseconds: 1500), () {
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
@@ -36,59 +36,32 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: Colors.white,
       body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
+        child: Semantics(
+          label: '약먹자',
+          image: true,
+          child: ClipRRect(
+            key: SplashScreen.iconKey,
+            borderRadius: BorderRadius.circular(28),
+            child: Image.asset(
+              SplashScreen.logoAssetPath,
               width: 120,
               height: 120,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(28),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.25),
-                    blurRadius: 30,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Image.asset(
-                SplashScreen.logoAssetPath,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stack) => Container(
-                  color: AppColors.primarySoft,
-                  child: const Icon(
-                    Icons.medication_rounded,
-                    size: 72,
-                    color: AppColors.primary,
-                  ),
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stack) => Container(
+                width: 120,
+                height: 120,
+                color: RenewalColors.green50,
+                alignment: Alignment.center,
+                child: const Icon(
+                  Icons.medication_rounded,
+                  size: 72,
+                  color: RenewalColors.green,
                 ),
               ),
             ),
-            const SizedBox(height: 28),
-            const Text(
-              '약먹자',
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textStrong,
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              '건강한 하루의 시작',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: AppColors.primaryDark,
-                letterSpacing: 1.0,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
