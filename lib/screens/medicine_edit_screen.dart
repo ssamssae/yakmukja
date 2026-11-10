@@ -571,17 +571,27 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                                 },
                               ),
                               const SizedBox(height: 8),
-                              Text(
-                                _weekdays.length == 7
-                                    ? '매일 알림을 받아요'
-                                    : _weekdays.isEmpty
-                                    ? '요일을 1개 이상 선택해 주세요'
-                                    : '선택한 요일에만 알림을 받아요',
-                                style: renewalStyle(
-                                  12,
-                                  FontWeight.w600,
-                                  RenewalColors.faint,
-                                ),
+                              // 알림이 꺼져 있으면 알림을 받는다고 말하지 않는다.
+                              // (T-261110-026)
+                              ValueListenableBuilder<bool?>(
+                                valueListenable: NotificationService.enabled,
+                                builder: (context, enabled, _) {
+                                  final off = enabled == false;
+                                  return Text(
+                                    _weekdays.isEmpty
+                                        ? '요일을 1개 이상 선택해 주세요'
+                                        : _weekdays.length == 7
+                                        ? (off ? '매일 먹는 약이에요' : '매일 알림을 받아요')
+                                        : (off
+                                              ? '선택한 요일에만 먹는 약이에요'
+                                              : '선택한 요일에만 알림을 받아요'),
+                                    style: renewalStyle(
+                                      12,
+                                      FontWeight.w600,
+                                      RenewalColors.faint,
+                                    ),
+                                  );
+                                },
                               ),
                             ],
                           ),

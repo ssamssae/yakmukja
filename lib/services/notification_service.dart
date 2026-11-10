@@ -47,7 +47,8 @@ enum NotificationEnableResult {
 class NotificationService {
   static final _plugin = FlutterLocalNotificationsPlugin();
 
-  /// 기기에서 이 앱의 알림이 켜져 있는지. null = 아직 모른다(준비 전·확인 실패).
+  /// 기기에서 이 앱의 알림이 켜져 있는지. null = 아직 모른다(알림 준비 전, 또는 한 번도
+  /// 읽지 못함). 읽기에 실패하면 마지막으로 읽은 값을 그대로 둔다.
   /// 꺼져 있으면 홈이 안내를 띄운다. (T-261110-026)
   static final ValueNotifier<bool?> enabled = ValueNotifier<bool?>(null);
 
@@ -78,9 +79,16 @@ class NotificationService {
   /// 꺼져 있다가 켜진 것을 알게 되면 약 목록대로 알림을 다시 건다 —
   /// iOS 는 권한이 없는 동안 예약 자체가 실패하기 때문이다. (T-261110-026)
   static Future<void> refreshPermission() async {
+    // 알림 준비를 한 적이 없거나(스토어 화면 캡처 모드) 실패했으면 권한 상태를 말하지
+    // 않는다 — 알림을 걸 수 없는 채로 「꺼짐→켜짐」을 말하면 화면만 괜찮다고 한다.
+    final ready = _initFuture;
+    if (ready == null) return;
+    await ready;
+    if (!_initialized) return;
     final before = enabled.value;
     await _readPermission();
-    if (before == false && enabled.value == true) {
+    // 켜져 있는 것을 새로 알게 됐다(꺼짐→켜짐, 모름→켜짐).
+    if (before != true && enabled.value == true) {
       final medicines = _medicines;
       if (medicines != null) await syncAll(medicines());
     }
@@ -108,9 +116,16 @@ class NotificationService {
     }
   }
 
+  static Future<NotificationEnableResult>? _enabling;
+
   /// 「알림 켜기」: 권한을 다시 묻는다. 그래도 꺼져 있으면 iOS 는 이 앱의 설정 화면을
   /// 연다(한 번 거절하면 앱에서 다시 물을 수 없다). (T-261110-026)
-  static Future<NotificationEnableResult> requestEnable() async {
+  /// 답을 기다리는 동안 또 부르면 같은 요청의 결과를 돌려준다 — 권한 창이 떠 있을 때
+  /// 다시 물으면 기기가 거절해 「손으로 켜라」는 엉뚱한 안내가 나간다.
+  static Future<NotificationEnableResult> requestEnable() =>
+      _enabling ??= _requestEnable().whenComplete(() => _enabling = null);
+
+  static Future<NotificationEnableResult> _requestEnable() async {
     try {
       final ios = _plugin
           .resolvePlatformSpecificImplementation<
@@ -120,8 +135,9 @@ class NotificationService {
         await ios.requestPermissions(alert: true, badge: true, sound: true);
         await refreshPermission();
         if (enabled.value == true) return NotificationEnableResult.granted;
-        await launchUrl(Uri.parse('app-settings:'));
-        return NotificationEnableResult.openedSettings;
+        final opened = await launchUrl(Uri.parse('app-settings:'));
+        if (opened) return NotificationEnableResult.openedSettings;
+        return NotificationEnableResult.needsManual;
       }
       final android = _plugin
           .resolvePlatformSpecificImplementation<
@@ -396,6 +412,7 @@ class NotificationService {
     _syncTail = null;
     _syncGeneration = 0;
     _medicines = null;
+    _enabling = null;
     enabled.value = null;
   }
 }

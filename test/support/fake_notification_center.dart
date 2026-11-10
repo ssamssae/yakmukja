@@ -41,6 +41,12 @@ class FakeNotificationCenter {
   /// 앱이 연 주소(설정 화면 등).
   final launchedUrls = <String>[];
 
+  /// true 면 기기가 주소를 열지 못한다.
+  bool launchFails = false;
+
+  /// true 면 알림 권한 상태를 읽지 못한다.
+  bool permissionReadFails = false;
+
   late TargetPlatform _platform;
 
   /// 걸려 있는 알림을 이른 시각부터 「요일칸 HH:mm 본문」으로.
@@ -81,6 +87,7 @@ class FakeNotificationCenter {
     messenger.setMockMethodCallHandler(_urlLauncher, (call) async {
       if (call.method == 'launch') {
         launchedUrls.add((call.arguments as Map)['url'] as String);
+        return !launchFails;
       }
       return true;
     });
@@ -91,6 +98,9 @@ class FakeNotificationCenter {
       final args = call.arguments;
       switch (call.method) {
         case 'checkPermissions':
+          if (permissionReadFails) {
+            throw PlatformException(code: 'permission_read_failed');
+          }
           return <String, Object?>{
             'isEnabled': enabled,
             'isAlertEnabled': enabled,
@@ -98,6 +108,9 @@ class FakeNotificationCenter {
             'isSoundEnabled': enabled,
           };
         case 'areNotificationsEnabled':
+          if (permissionReadFails) {
+            throw PlatformException(code: 'permission_read_failed');
+          }
           return enabled;
         case 'requestPermissions':
         case 'requestNotificationsPermission':

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -205,5 +206,157 @@ void main() {
 
     expect(find.text('설정된 시간에 푸시 알림이 발송됩니다'), findsNothing);
     expect(find.text('알림이 꺼져 있어요. 홈에서 알림을 켜 주세요'), findsOneWidget);
+    // 요일 안내도 알림을 받는다고 말하지 않는다.
+    expect(find.text('매일 알림을 받아요'), findsNothing);
+    expect(find.text('매일 먹는 약이에요'), findsOneWidget);
+  });
+
+  testWidgets('알림 상태를 아직 모르면 약 등록 화면은 종전 문구이고, 꺼짐을 알게 되면 바로 바뀐다', (
+    tester,
+  ) async {
+    await addMedicine();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: MedicineEditScreen(medicine: box.values.first),
+      ),
+    );
+    await tester.pump();
+    expect(find.text('설정된 시간에 푸시 알림이 발송됩니다'), findsOneWidget);
+    expect(find.text('매일 알림을 받아요'), findsOneWidget);
+
+    NotificationService.enabled.value = false;
+    await tester.pump();
+
+    expect(find.text('알림이 꺼져 있어요. 홈에서 알림을 켜 주세요'), findsOneWidget);
+    expect(find.text('매일 먹는 약이에요'), findsOneWidget);
+  });
+
+  testWidgets('오늘 쉬는 약만 있어도 꺼짐 안내가 나온다', (tester) async {
+    // 시험 시각(2026-11-10)은 화요일이다. 수요일에만 먹는 약.
+    await box.add(
+      Medicine(
+        name: '골다공증약',
+        dosage: '1알',
+        times: [DoseTime(hour: 8, minute: 0)],
+        memo: '',
+        createdAt: DateTime(2026, 11, 1),
+        weekdays: [DateTime.wednesday],
+      ),
+    );
+    NotificationService.enabled.value = false;
+    await pumpHome(tester);
+
+    expect(find.text('알림이 꺼져 있어요'), findsOneWidget);
+  });
+
+  testWidgets('「알림 켜기」 단추는 누르기 쉬운 크기다 — 높이 48 이상', (tester) async {
+    await addMedicine();
+    NotificationService.enabled.value = false;
+    await pumpHome(tester);
+
+    final button = find.ancestor(
+      of: find.text('알림 켜기'),
+      matching: find.byType(InkWell),
+    );
+    expect(tester.getSize(button).height, greaterThanOrEqualTo(48));
+  });
+
+  testWidgets('꺼진 채로 앱에 여러 번 돌아와도 권한을 다시 묻거나 설정 화면을 열지 않는다', (tester) async {
+    final center = FakeNotificationCenter()..install(TargetPlatform.iOS);
+    try {
+      center
+        ..enabled = false
+        ..grantOnRequest = false;
+      await addMedicine();
+      await tester.runAsync(
+        () => NotificationService.initAndSync(() => box.values),
+      );
+      await pumpHome(tester);
+      int asked() =>
+          center.methods.where((m) => m == 'requestPermissions').length;
+      final askedBefore = asked();
+
+      for (var i = 0; i < 3; i++) {
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.inactive,
+        );
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        await settle(tester);
+      }
+
+      expect(asked(), askedBefore);
+      expect(center.launchedUrls, isEmpty);
+      expect(find.text('알림이 꺼져 있어요'), findsOneWidget);
+    } finally {
+      await tester.pumpWidget(const SizedBox.shrink());
+      center.uninstall();
+    }
+  });
+
+  testWidgets('「알림 켜기」를 두 번 눌러도 권한은 한 번만 묻는다', (tester) async {
+    final center = FakeNotificationCenter()..install(TargetPlatform.android);
+    final gate = Completer<void>();
+    try {
+      center
+        ..enabled = false
+        ..grantOnRequest = false;
+      await addMedicine();
+      await tester.runAsync(
+        () => NotificationService.initAndSync(() => box.values),
+      );
+      await pumpHome(tester);
+      int asked() => center.methods
+          .where((m) => m == 'requestNotificationsPermission')
+          .length;
+      final askedBefore = asked();
+
+      // 권한 창이 떠 있는 동안(답이 아직 안 옴) 한 번 더 누른다.
+      center.hold = gate.future;
+      await tester.tap(find.text('알림 켜기'));
+      await tester.pump();
+      await tester.tap(find.text('알림 켜기'));
+      await tester.pump();
+      center.hold = null;
+      gate.complete();
+      await settle(tester);
+
+      expect(asked() - askedBefore, 1);
+      expect(find.byType(SnackBar), findsOneWidget);
+      // 첫 안내가 내려간 뒤에 같은 안내가 한 번 더 올라오지 않는다.
+      await tester.pump(const Duration(seconds: 1)); // 올라오는 움직임이 끝난다
+      await tester.pump(const Duration(seconds: 5)); // 4초 뒤 내려가기 시작한다
+      await tester.pumpAndSettle();
+      expect(find.byType(SnackBar), findsNothing);
+    } finally {
+      if (!gate.isCompleted) gate.complete();
+      await tester.pumpWidget(const SizedBox.shrink());
+      center.uninstall();
+    }
+  });
+
+  testWidgets('iOS 에서 설정 화면을 열었으면 안내 글은 띄우지 않는다', (tester) async {
+    final center = FakeNotificationCenter()..install(TargetPlatform.iOS);
+    try {
+      center
+        ..enabled = false
+        ..grantOnRequest = false;
+      await addMedicine();
+      await tester.runAsync(
+        () => NotificationService.initAndSync(() => box.values),
+      );
+      await pumpHome(tester);
+
+      await tester.tap(find.text('알림 켜기'));
+      await settle(tester);
+
+      expect(center.launchedUrls, ['app-settings:']);
+      expect(find.byType(SnackBar), findsNothing);
+    } finally {
+      await tester.pumpWidget(const SizedBox.shrink());
+      center.uninstall();
+    }
   });
 }

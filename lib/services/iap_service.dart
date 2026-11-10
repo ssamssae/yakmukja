@@ -31,8 +31,9 @@ enum IapResult {
 /// 스코프라 `remove_ads`, iOS(ASC)는 productId 가 개발자계정 전역 유일이라 reverse-DNS
 /// 네임스페이스 `com.daejongkang.yakmukja.remove_ads` 를 쓴다 (메모요가 `remove_ads` 선점).
 class IapService {
-  static final String removeAdsProductId =
-      Platform.isIOS ? 'com.daejongkang.yakmukja.remove_ads' : 'remove_ads';
+  static final String removeAdsProductId = Platform.isIOS
+      ? 'com.daejongkang.yakmukja.remove_ads'
+      : 'remove_ads';
   static const String _prefsKey = 'iap_ads_removed';
 
   /// 광고 제거 여부. ValueListenableBuilder 로 구독해 구매 즉시 UI 반영.

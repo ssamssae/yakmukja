@@ -117,14 +117,23 @@ class _HomeScreenState extends State<HomeScreen> {
     unawaited(NotificationService.refreshPermission());
   }
 
+  bool _enablingNotifications = false;
+
   /// 「알림 켜기」 — 권한을 다시 묻고, 앱에서 켤 수 없으면 켜는 길을 알려 준다.
   Future<void> _enableNotifications() async {
+    // 권한 창이 떠 있는 동안 또 눌렀다 — 안내가 두 번 나가지 않게 한다.
+    if (_enablingNotifications) return;
+    _enablingNotifications = true;
     final messenger = ScaffoldMessenger.of(context);
-    final result = await NotificationService.requestEnable();
-    if (result == NotificationEnableResult.needsManual) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('휴대폰 설정 > 앱 > 약먹자에서 알림을 켜 주세요')),
-      );
+    try {
+      final result = await NotificationService.requestEnable();
+      if (result == NotificationEnableResult.needsManual) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('휴대폰 설정에서 약먹자 알림을 켜 주세요')),
+        );
+      }
+    } finally {
+      _enablingNotifications = false;
     }
   }
 
@@ -1157,7 +1166,10 @@ class _NotificationOffCard extends StatelessWidget {
                   child: InkWell(
                     onTap: onEnable,
                     borderRadius: BorderRadius.circular(999),
-                    child: Padding(
+                    // 누르기 쉬운 크기(높이 48 이상)를 지킨다.
+                    child: Container(
+                      constraints: const BoxConstraints(minHeight: 48),
+                      alignment: Alignment.center,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       child: Text(
                         '알림 켜기',

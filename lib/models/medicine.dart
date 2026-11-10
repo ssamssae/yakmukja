@@ -43,16 +43,15 @@ class Medicine extends HiveObject {
     List<String>? takenRecords,
     this.deletedAt,
     List<int>? weekdays,
-  })  : takenRecords = takenRecords ?? [],
-        weekdays = weekdays ?? const [1, 2, 3, 4, 5, 6, 7];
+  }) : takenRecords = takenRecords ?? [],
+       weekdays = weekdays ?? const [1, 2, 3, 4, 5, 6, 7];
 
   /// 매일을 뜻하는 전체 요일 집합.
   static const allWeekdays = [1, 2, 3, 4, 5, 6, 7];
 
   /// 마이그레이션 안전 게터 — weekdays 가 비어있으면(구버전 데이터) "매일"로 본다.
   /// 알림/홈 필터는 항상 이 게터를 사용한다.
-  List<int> get activeWeekdays =>
-      weekdays.isEmpty ? allWeekdays : weekdays;
+  List<int> get activeWeekdays => weekdays.isEmpty ? allWeekdays : weekdays;
 
   /// 매일 복용 여부(전체 7요일 선택).
   bool get isDaily => activeWeekdays.length == 7;
@@ -82,7 +81,8 @@ class Medicine extends HiveObject {
 
   String _todayKey(DoseTime t) {
     final now = DateTime.now();
-    final d = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final d =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     return '${d}_${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
   }
 
@@ -104,7 +104,9 @@ class Medicine extends HiveObject {
     final cutoff = DateTime.now().subtract(Duration(days: keepDays));
     final cutoffStr =
         '${cutoff.year}-${cutoff.month.toString().padLeft(2, '0')}-${cutoff.day.toString().padLeft(2, '0')}';
-    final pruned = takenRecords.where((r) => r.compareTo(cutoffStr) >= 0).toList();
+    final pruned = takenRecords
+        .where((r) => r.compareTo(cutoffStr) >= 0)
+        .toList();
     if (pruned.length != takenRecords.length) {
       takenRecords = pruned;
       save();
