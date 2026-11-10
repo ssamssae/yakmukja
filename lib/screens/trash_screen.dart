@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 
@@ -69,7 +71,10 @@ class TrashScreen extends StatelessWidget {
   Future<void> _restore(BuildContext context, Medicine m) async {
     m.deletedAt = null;
     await m.save();
-    await NotificationService.scheduleForMedicine(m);
+    // 복원한 약까지 넣어 기기 알림을 다시 맞춘다. (T-261110-023)
+    unawaited(
+      NotificationService.syncAll(Hive.box<Medicine>(medicineBoxName).values),
+    );
     if (context.mounted) {
       ScaffoldMessenger.of(
         context,

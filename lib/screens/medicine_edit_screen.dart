@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_ce/hive.dart';
@@ -368,21 +370,18 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
           weekdays: weekdays,
         );
         await box.add(medicine);
-        await NotificationService.scheduleForMedicine(medicine);
       } else {
-        // Retain old slots until persistence succeeds, then replace alarms.
-        final previousTimeCount = existing.times.length;
         existing
           ..name = _nameCtrl.text.trim()
           ..dosage = _dosage!
           ..times = _times
           ..weekdays = weekdays;
         await existing.save();
-        await NotificationService.scheduleForMedicine(
-          existing,
-          previousTimeCount: previousTimeCount,
-        );
       }
+      // 저장이 끝난 뒤 기기 알림을 약 목록과 다시 맞춘다. 화면은 기다리지 않는다 —
+      // 알림 쪽이 늦거나 실패해도 저장은 끝났고, 다음에 앱을 켤 때 다시 맞춰진다.
+      // (T-261110-023)
+      unawaited(NotificationService.syncAll(box.values));
       if (mounted) Navigator.of(context).pop();
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -422,10 +421,13 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
       ),
     );
     if (confirm != true) return;
-    // 휴지통으로 이동(소프트 삭제) — 알림은 끄고, 복원 시 다시 예약. (T-260614-12)
-    await NotificationService.cancelForMedicine(widget.medicine!);
+    // 휴지통으로 이동(소프트 삭제) — 알림은 약 목록대로 다시 맞춘다(휴지통 약은
+    // 빠진다). 복원하면 다시 걸린다. (T-260614-12, T-261110-023)
     widget.medicine!.deletedAt = DateTime.now();
     await widget.medicine!.save();
+    unawaited(
+      NotificationService.syncAll(Hive.box<Medicine>(medicineBoxName).values),
+    );
     if (mounted) Navigator.of(context).pop();
   }
 
