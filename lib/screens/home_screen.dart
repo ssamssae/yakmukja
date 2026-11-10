@@ -493,7 +493,13 @@ class _NowCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Row(
+                    // 한 줄에 다 안 들어가면(큰 글씨·좁은 화면) 남은 시간이 다음 줄로
+                    // 내려간다. 들어가면 종전처럼 양 끝에 붙는다. (T-261110-037)
+                    Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 8,
                       children: [
                         Container(
                           padding: const EdgeInsets.fromLTRB(10, 6, 12, 6),
@@ -528,12 +534,26 @@ class _NowCard extends StatelessWidget {
                             ],
                           ),
                         ),
-                        const Spacer(),
-                        Icon(Icons.schedule_rounded, size: 18, color: accent),
-                        const SizedBox(width: 4),
-                        Text(
-                          remain,
-                          style: renewalStyle(15, FontWeight.w800, accent),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.schedule_rounded,
+                              size: 18,
+                              color: accent,
+                            ),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                remain,
+                                style: renewalStyle(
+                                  15,
+                                  FontWeight.w800,
+                                  accent,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -565,12 +585,14 @@ class _NowCard extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(height: 10),
-                              Row(
+                              // 요일이 많거나 단위가 길면 다음 줄로 내려간다.
+                              // (T-261110-037)
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
                                 children: [
-                                  if (medicine.dosage.isNotEmpty) ...[
+                                  if (medicine.dosage.isNotEmpty)
                                     _Tag(text: medicine.dosage),
-                                    const SizedBox(width: 6),
-                                  ],
                                   _Tag(text: medicine.weekdayLabel),
                                 ],
                               ),
