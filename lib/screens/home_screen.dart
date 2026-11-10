@@ -42,15 +42,29 @@ int? pickNextDoseIndex(
   return best;
 }
 
-/// 큰 카드의 남은 시간. 시각이 지났으면 "지금".
+/// 복용 시각이 이만큼(분) 지나도록 안 먹었으면 「지금」 대신 지난 시간을 알린다.
+/// (T-261110-033)
+const int doseOverdueAfterMinutes = 30;
+
+/// 복용 시각이 [doseOverdueAfterMinutes] 넘게 지났는가.
+bool isDoseOverdue(int doseMinute, int nowMinute) =>
+    nowMinute - doseMinute >= doseOverdueAfterMinutes;
+
+/// 「20분」「2시간」「1시간 30분」.
+String _spanText(int totalMinutes) {
+  final hours = totalMinutes ~/ 60;
+  final minutes = totalMinutes % 60;
+  if (hours == 0) return '$minutes분';
+  if (minutes == 0) return '$hours시간';
+  return '$hours시간 $minutes분';
+}
+
+/// 큰 카드의 남은 시간. 시각이 됐으면 "지금", 30분 넘게 지났으면 "N분 지남".
 String doseRemainText(int doseMinute, int nowMinute) {
   final remain = doseMinute - nowMinute;
-  if (remain <= 0) return '지금';
-  final hours = remain ~/ 60;
-  final minutes = remain % 60;
-  if (hours == 0) return '$minutes분 남음';
-  if (minutes == 0) return '$hours시간 남음';
-  return '$hours시간 $minutes분 남음';
+  if (remain > 0) return '${_spanText(remain)} 남음';
+  if (isDoseOverdue(doseMinute, nowMinute)) return '${_spanText(-remain)} 지남';
+  return '지금';
 }
 
 /// 메인 시간대. 새벽 · 아침 · 오후 · 저녁.
@@ -227,7 +241,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 30),
                     _RestHeader(count: rest.length),
                     const SizedBox(height: 12),
-                    _RestList(entries: rest),
+                    _RestList(entries: rest, nowMinute: nowMinute),
                   ],
                   if (offDay.isNotEmpty) ...[
                     const SizedBox(height: 30),
@@ -455,6 +469,10 @@ class _NowCard extends StatelessWidget {
     final medicine = entry.medicine;
     final look = lookForMedicineName(medicine.name);
     final remain = doseRemainText(entry.minuteOfDay, nowMinute);
+    // 시간이 한참 지났는데 안 먹은 약 — 「다음 약」이 아니라 「지난 약」으로 알린다.
+    // (T-261110-033)
+    final overdue = isDoseOverdue(entry.minuteOfDay, nowMinute);
+    final accent = overdue ? RenewalColors.danger : RenewalColors.greenDeep;
     return DecoratedBox(
       decoration: renewalCardDecoration(
         radius: RenewalRadius.nowCard,
@@ -480,7 +498,9 @@ class _NowCard extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.fromLTRB(10, 6, 12, 6),
                           decoration: BoxDecoration(
-                            color: RenewalColors.green50,
+                            color: overdue
+                                ? RenewalColors.danger50
+                                : RenewalColors.green50,
                             borderRadius: BorderRadius.circular(99),
                           ),
                           child: Row(
@@ -489,37 +509,31 @@ class _NowCard extends StatelessWidget {
                               Container(
                                 width: 7,
                                 height: 7,
-                                decoration: const BoxDecoration(
-                                  color: RenewalColors.green,
+                                decoration: BoxDecoration(
+                                  color: overdue
+                                      ? RenewalColors.danger
+                                      : RenewalColors.green,
                                   shape: BoxShape.circle,
                                 ),
                               ),
                               const SizedBox(width: 6),
                               Text(
-                                '다음 약',
+                                overdue ? '지난 약' : '다음 약',
                                 style: renewalStyle(
                                   13,
                                   FontWeight.w700,
-                                  RenewalColors.greenDeep,
+                                  accent,
                                 ),
                               ),
                             ],
                           ),
                         ),
                         const Spacer(),
-                        const Icon(
-                          Icons.schedule_rounded,
-                          size: 18,
-                          color: RenewalColors.greenDeep,
-                        ),
+                        Icon(Icons.schedule_rounded, size: 18, color: accent),
                         const SizedBox(width: 4),
                         Text(
                           remain,
-                          style: renewalStyle(
-                            15,
-                            FontWeight.w800,
-                            RenewalColors.greenDeep,
-                          ),
+                          style: renewalStyle(15, FontWeight.w800, accent),
                         ),
                       ],
                     ),
@@ -766,9 +780,10 @@ class _RestHeader extends StatelessWidget {
 }
 
 class _RestList extends StatelessWidget {
-  const _RestList({required this.entries});
+  const _RestList({required this.entries, required this.nowMinute});
 
   final List<_Entry> entries;
+  final int nowMinute;
 
   @override
   Widget build(BuildContext context) {
@@ -789,7 +804,7 @@ class _RestList extends StatelessWidget {
                   endIndent: 18,
                   color: RenewalColors.line,
                 ),
-              _RestRow(entry: entry),
+              _RestRow(entry: entry, nowMinute: nowMinute),
             ],
           ],
         ),
@@ -799,9 +814,10 @@ class _RestList extends StatelessWidget {
 }
 
 class _RestRow extends StatelessWidget {
-  const _RestRow({required this.entry});
+  const _RestRow({required this.entry, required this.nowMinute});
 
   final _Entry entry;
+  final int nowMinute;
 
   @override
   Widget build(BuildContext context) {
@@ -811,6 +827,8 @@ class _RestRow extends StatelessWidget {
     final detail = medicine.dosage.isEmpty
         ? entry.when
         : '${entry.when} · ${medicine.dosage}';
+    // 지나갔는데 아직 안 먹은 약. (T-261110-033)
+    final overdue = !taken && isDoseOverdue(entry.minuteOfDay, nowMinute);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
       child: Row(
@@ -860,6 +878,16 @@ class _RestRow extends StatelessWidget {
                           TextSpan(
                             children: [
                               TextSpan(text: detail),
+                              if (overdue)
+                                TextSpan(
+                                  text:
+                                      '  ${doseRemainText(entry.minuteOfDay, nowMinute)}',
+                                  style: renewalStyle(
+                                    13,
+                                    FontWeight.w700,
+                                    RenewalColors.danger,
+                                  ),
+                                ),
                               if (taken)
                                 TextSpan(
                                   text: '  먹었어요',

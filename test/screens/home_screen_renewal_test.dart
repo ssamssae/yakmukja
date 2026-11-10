@@ -70,7 +70,8 @@ void main() {
     expect(doseRemainText(10 * 60, 8 * 60 + 30), '1시간 30분 남음');
     expect(doseRemainText(10 * 60, 8 * 60), '2시간 남음');
     expect(doseRemainText(8 * 60, 8 * 60), '지금');
-    expect(doseRemainText(8 * 60, 9 * 60), '지금');
+    // 30분 넘게 지나면 「지금」 대신 지난 시간을 말한다. (T-261110-033)
+    expect(doseRemainText(8 * 60, 9 * 60), '1시간 지남');
     expect(homePeriodLabel(5), '새벽');
     expect(homePeriodLabel(6), '아침');
     expect(homePeriodLabel(11), '아침');
@@ -231,8 +232,13 @@ void main() {
     await _pumpHome(tester, _todayAt(8, 10));
     expect(find.text('아침 8:30에 알림을 보내드릴게요'), findsOneWidget);
 
-    await _pumpHome(tester, _todayAt(9, 0));
+    await _pumpHome(tester, _todayAt(8, 40));
     expect(find.text('지금'), findsOneWidget);
+    expect(find.text('아침 8:30에 알림을 보내드릴게요'), findsNothing);
+
+    // 30분 넘게 지나면 「지금」 대신 지난 시간이 나온다. (T-261110-033)
+    await _pumpHome(tester, _todayAt(9, 0));
+    expect(find.text('30분 지남'), findsOneWidget);
     expect(find.text('아침 8:30에 알림을 보내드릴게요'), findsNothing);
   });
 }
