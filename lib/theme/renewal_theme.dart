@@ -23,6 +23,10 @@ class RenewalColors {
   static const mintMid = Color(0xFFE0F7EA);
   static const blobRight = Color(0xFF9DEBD3);
   static const blobLeft = Color(0xFFBDF5CC);
+
+  /// 지난 약 같은 주의 표시. (T-261110-033)
+  static const danger = AppColors.danger;
+  static const danger50 = Color(0xFFFFEEEE);
 }
 
 class RenewalRadius {

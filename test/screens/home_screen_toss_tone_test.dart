@@ -80,8 +80,16 @@ void main() {
       if (dir.existsSync()) dir.deleteSync(recursive: true);
     });
 
+    // 아침 8:05 로 고정한다 — 실제 시각을 쓰면 8:30 뒤에는 「지난 약」(붉은색)으로 바뀌어
+    // 하루 중 언제 돌리느냐에 따라 결과가 달라진다. (T-261110-033)
+    final today = DateTime.now();
     await tester.pumpWidget(
-      MaterialApp(theme: AppTheme.light, home: const HomeScreen()),
+      MaterialApp(
+        theme: AppTheme.light,
+        home: HomeScreen(
+          clock: () => DateTime(today.year, today.month, today.day, 8, 5),
+        ),
+      ),
     );
     await tester.pump();
     expect(tester.takeException(), isNull);
