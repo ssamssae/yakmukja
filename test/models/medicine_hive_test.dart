@@ -121,25 +121,21 @@ void main() {
   // 바이트 레이아웃이 기존 hive 와 동일하므로 기존 사용자 box 도 무손실로 열린다.
   test('마이그레이션 보존: 다중 레코드 닫고 다시 열어도 수·내용 일치', () async {
     var box = await Hive.openBox<Medicine>('meds');
-    await box.add(
-      Medicine(
-        name: '혈압약',
-        dosage: '1알',
-        times: [DoseTime(hour: 9, minute: 0)],
-        memo: '아침',
-        createdAt: DateTime(2026, 6, 14, 9, 0),
-        takenRecords: ['2026-06-14_09:00'],
-      ),
-    );
-    await box.add(
-      Medicine(
-        name: '비타민',
-        dosage: '1.5알',
-        times: [DoseTime(hour: 9, minute: 0), DoseTime(hour: 21, minute: 0)],
-        memo: '',
-        createdAt: DateTime(2026, 6, 14, 9, 5),
-      ),
-    );
+    await box.add(Medicine(
+      name: '혈압약',
+      dosage: '1알',
+      times: [DoseTime(hour: 9, minute: 0)],
+      memo: '아침',
+      createdAt: DateTime(2026, 6, 14, 9, 0),
+      takenRecords: ['2026-06-14_09:00'],
+    ));
+    await box.add(Medicine(
+      name: '비타민',
+      dosage: '1.5알',
+      times: [DoseTime(hour: 9, minute: 0), DoseTime(hour: 21, minute: 0)],
+      memo: '',
+      createdAt: DateTime(2026, 6, 14, 9, 5),
+    ));
     await box.close();
 
     box = await Hive.openBox<Medicine>('meds');

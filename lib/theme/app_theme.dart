@@ -59,15 +59,14 @@ class AppTheme {
   static const fontFamily = 'Pretendard';
 
   static ThemeData get light {
-    final scheme =
-        ColorScheme.fromSeed(
-          seedColor: AppColors.primary,
-          brightness: Brightness.light,
-        ).copyWith(
-          surface: AppColors.surface,
-          primary: AppColors.primary,
-          error: AppColors.danger,
-        );
+    final scheme = ColorScheme.fromSeed(
+      seedColor: AppColors.primary,
+      brightness: Brightness.light,
+    ).copyWith(
+      surface: AppColors.surface,
+      primary: AppColors.primary,
+      error: AppColors.danger,
+    );
 
     return ThemeData(
       useMaterial3: true,
@@ -111,10 +110,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(AppRadius.input),
           borderSide: const BorderSide(color: AppColors.primary, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
         elevation: 2,

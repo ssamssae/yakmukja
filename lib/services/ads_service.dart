@@ -44,22 +44,21 @@ class AdsService {
   /// 개발·실기기 시험이나 TestFlight 에서 실광고가 노출·클릭되면 무효 트래픽으로 게시자 계정이
   /// 정지된다(2026-11-04 29일 정지, T-261104-014 B안).
   static Future<String> bannerAdUnitId() async => bannerAdUnitIdFor(
-    releaseMode: kReleaseMode,
-    platform: Platform.isIOS
-        ? TargetPlatform.iOS
-        : Platform.isAndroid
-        ? TargetPlatform.android
-        : defaultTargetPlatform,
-    installerStore: await installerStore,
-  );
+        releaseMode: kReleaseMode,
+        platform: Platform.isIOS
+            ? TargetPlatform.iOS
+            : Platform.isAndroid
+                ? TargetPlatform.android
+                : defaultTargetPlatform,
+        installerStore: await installerStore,
+      );
 
   static Future<String?>? _installerStore;
 
   /// 설치 출처. iOS 는 앱스토어 설치면 `com.apple`, TestFlight·개발 서명 설치면 `com.apple.testflight` 다
   /// (package_info_plus 가 영수증 경로 `sandboxReceipt` 로 가른다). 읽지 못하면 null 이다.
   @visibleForTesting
-  static Future<String?> get installerStore =>
-      _installerStore ??= _readInstallerStore();
+  static Future<String?> get installerStore => _installerStore ??= _readInstallerStore();
 
   static Future<String?> _readInstallerStore() async {
     try {

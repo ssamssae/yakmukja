@@ -128,13 +128,13 @@ void main() {
 
   group('Medicine 복용 요일 (weekdays)', () {
     Medicine make({List<int>? weekdays}) => Medicine(
-      name: 'A',
-      dosage: '1',
-      times: [DoseTime(hour: 8, minute: 0)],
-      memo: '',
-      createdAt: DateTime(2026, 1, 1),
-      weekdays: weekdays,
-    );
+          name: 'A',
+          dosage: '1',
+          times: [DoseTime(hour: 8, minute: 0)],
+          memo: '',
+          createdAt: DateTime(2026, 1, 1),
+          weekdays: weekdays,
+        );
 
     test('weekdays 미지정 시 기본 = 매일([1..7])', () {
       final m = make();
