@@ -12,6 +12,7 @@ import 'package:yakmukja/screens/home_screen.dart';
 import 'package:yakmukja/screens/settings_screen.dart';
 import 'package:yakmukja/services/notification_service.dart';
 import 'package:yakmukja/theme/app_theme.dart';
+import 'package:yakmukja/theme/renewal_theme.dart';
 
 /// 지난 날에 먹은 약을 날짜별로 본다. (T-261110-039)
 void main() {
@@ -113,6 +114,19 @@ void main() {
     // 상태 글은 그 약 이름과 같은 줄(세로 위치)에 있다.
     expect((rowOf('먹었어요') - rowOf('혈압약')).abs(), lessThan(16));
     expect((rowOf('기록 없음') - rowOf('수면 보조제')).abs(), lessThan(16));
+
+    final missing = tester.widget<Text>(
+      inDay('2026-11-09', find.text('기록 없음')),
+    );
+    expect(missing.style?.color, RenewalColors.body);
+    final row = find.ancestor(
+      of: inDay('2026-11-09', find.text('기록 없음')),
+      matching: find.byType(Row),
+    );
+    expect(
+      find.descendant(of: row, matching: find.byType(Opacity)),
+      findsNothing,
+    );
   });
 
   testWidgets('그제부터는 「어제」 머리표 없이 날짜만 보인다', (tester) async {
@@ -144,6 +158,47 @@ void main() {
     await pumpHistory(tester);
 
     expect(find.textContaining('최근 30일'), findsWidgets);
+  });
+
+  testWidgets('지금 약 설정으로 계산한다는 안내가 첫 날짜 카드 위에 있다', (tester) async {
+    await add('혈압약');
+    await pumpHistory(tester);
+
+    const noticeText =
+        '지난 날의 예정은 지금 약 설정으로 계산해요. '
+        '시간이나 요일을 바꾸면 예전 날짜의 표시가 달라질 수 있어요.';
+    final notice = find.text(noticeText);
+    expect(notice, findsOneWidget);
+    final card = find.byKey(const Key('history-day-2026-11-09'));
+    expect(tester.getTopLeft(notice).dy, lessThan(tester.getTopLeft(card).dy));
+  });
+
+  testWidgets('다음 날 다시 앞으로 오면 맨 위가 어제로 바뀐다', (tester) async {
+    await add('혈압약', createdAt: DateTime(2026, 11, 1));
+    var now = DateTime(2026, 11, 10, 21, 0);
+    tester.view.physicalSize = const Size(390, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: HistoryScreen(clock: () => now),
+      ),
+    );
+    await tester.pump();
+    expect(find.text('어제 · 11월 9일 월요일'), findsOneWidget);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    now = DateTime(2026, 11, 11, 8, 0);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+
+    expect(find.textContaining('어제 · 11월 10일'), findsOneWidget);
+    expect(find.text('어제 · 11월 9일 월요일'), findsNothing);
   });
 
   testWidgets('뒤로 단추를 누르면 앞 화면으로 돌아간다', (tester) async {
@@ -256,8 +311,9 @@ void main() {
         find.byKey(const Key('home-history-link')),
       );
       expect(node.label, contains('11월 10일 화요일'));
+      expect(node.label, contains('오늘 0/1 먹었어요'));
       expect(node.label, contains('지난 기록 보기'));
-      expect(node, containsSemantics(isButton: true, hasTapAction: true));
+      expect(node, isSemantics(isButton: true, hasTapAction: true));
       handle.dispose();
     });
 

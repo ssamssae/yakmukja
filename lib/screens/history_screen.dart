@@ -9,17 +9,47 @@ import '../widgets/pill_glyph.dart';
 import '../widgets/renewal_page.dart';
 import 'home_screen.dart' show homeClockLabel, homePeriodLabel;
 
+/// 첫 날짜 카드 위에 보여 주는 안내. 지난 날의 예정은 저장돼 있지 않다.
+const String _historyScheduleNotice =
+    '지난 날의 예정은 지금 약 설정으로 계산해요. '
+    '시간이나 요일을 바꾸면 예전 날짜의 표시가 달라질 수 있어요.';
+
 /// 지난 기록 — 어제부터 거꾸로 날짜별로 먹은 약을 본다. 읽기 전용이다.
 /// (T-261110-039)
-class HistoryScreen extends StatelessWidget {
+class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key, this.clock});
 
   /// 화면의 오늘 시각. 비우면 [DateTime.now].
   final DateTime Function()? clock;
 
   @override
+  State<HistoryScreen> createState() => _HistoryScreenState();
+}
+
+/// 앱이 다시 앞으로 오면 날짜를 다시 그린다. 밤에 열어 두고 아침에 돌아오면
+/// 어제 날짜가 맨 위에 남아 있던 문제. (T-261110-039)
+class _HistoryScreenState extends State<HistoryScreen> {
+  late final AppLifecycleListener _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycle = AppLifecycleListener(
+      onResume: () {
+        if (mounted) setState(() {});
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final today = (clock ?? DateTime.now)();
+    final today = (widget.clock ?? DateTime.now)();
     final history = buildDoseHistory(
       Hive.box<Medicine>(medicineBoxName).values,
       today,
@@ -34,15 +64,10 @@ class HistoryScreen extends StatelessWidget {
         if (history.isEmpty)
           const _EmptyHistory()
         else ...[
-          for (final day in history) ...[
-            _DayCard(day: day, isYesterday: day.date == yesterday),
-            const SizedBox(height: 12),
-          ],
           Padding(
-            padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
+            padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
             child: Text(
-              '기록은 최근 $doseHistoryDays일까지 남아요. 약 시간이나 요일을 바꾸면 '
-              '지난 날의 "기록 없음" 표시가 달라질 수 있어요.',
+              _historyScheduleNotice,
               style: renewalStyle(
                 13,
                 FontWeight.w500,
@@ -51,6 +76,10 @@ class HistoryScreen extends StatelessWidget {
               ),
             ),
           ),
+          for (final day in history) ...[
+            _DayCard(day: day, isYesterday: day.date == yesterday),
+            const SizedBox(height: 12),
+          ],
         ],
       ],
     );
@@ -155,10 +184,7 @@ class _DoseRow extends StatelessWidget {
                   color: look.soft,
                   shape: BoxShape.circle,
                 ),
-                child: Opacity(
-                  opacity: dose.taken ? 1 : 0.55,
-                  child: PillGlyph(look: look, size: 23),
-                ),
+                child: PillGlyph(look: look, size: 23),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -202,7 +228,7 @@ class _DoseRow extends StatelessWidget {
                 style: renewalStyle(
                   13,
                   FontWeight.w700,
-                  dose.taken ? RenewalColors.greenDeep : RenewalColors.hush,
+                  dose.taken ? RenewalColors.greenDeep : RenewalColors.body,
                 ),
               ),
             ],

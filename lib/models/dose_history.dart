@@ -1,8 +1,8 @@
 import 'medicine.dart';
 
-/// 지난 기록으로 보여 주는 날 수(어제부터 거꾸로). 복용 기록은 앱을 켤 때
-/// 30일 넘은 것을 정리한다([Medicine.pruneOldRecords]). (T-261110-039)
-const int doseHistoryDays = 30;
+/// 지난 기록으로 보여 주는 날 수(어제부터 거꾸로). 복용 기록 정리와 같은
+/// [doseRecordKeepDays]를 쓴다. (T-261110-039)
+const int doseHistoryDays = doseRecordKeepDays;
 
 /// 지난 하루의 약 한 줄.
 class HistoryDose {
@@ -45,9 +45,9 @@ class HistoryDay {
 /// 그날의 예정은 지금 약 설정(요일·시간·등록일)으로 계산한다. 설정을 바꾸기 전의
 /// 예정은 남아 있지 않기 때문이다. 그래서:
 /// - 그날 표시한 기록이 있으면 지금 설정과 달라도(시간·요일을 바꿨어도) 먹은 것으로 넣는다.
-/// - 그런 기록 한 건마다 그 약의 「기록 없음」 한 건을 뺀다 — 시간을 옮긴 약을
-///   「먹음 + 기록 없음」 두 줄로 세지 않는다.
-/// - 등록한 날에는 등록한 시각 뒤의 약만 예정으로 본다.
+/// - 예정에 없던 시각의 기록은 가장 가까운 남은 현재 시각과 짝짓고, 그 칸의
+///   「기록 없음」을 뺀다. 시간을 옮긴 약을 두 줄로 세지 않기 위해서다.
+/// - 등록한 날의 이른 시각 제외는 그 짝짓기 다음에 적용한다.
 /// 휴지통 약은 뺀다.
 List<HistoryDay> buildDoseHistory(
   Iterable<Medicine> medicines,
@@ -98,25 +98,35 @@ List<HistoryDose> _dosesOn(Medicine medicine, DateTime date) {
     recorded.add(hour * 60 + minute);
   }
 
-  // 지금 설정으로 본 그날의 예정.
+  // 지금 설정으로 본 그날의 시각. 등록한 날의 이른 시각도 일단 넣는다.
+  // 그 시각을 먼저 빼면, 이른 시각 체크가 「옮긴 기록」으로 세어져
+  // 등록 뒤의 진짜 놓침을 지운다.
   final created = medicine.createdAt;
   final createdDay = DateTime(created.year, created.month, created.day);
-  final scheduled = <int>{};
-  if (!date.isBefore(createdDay) && medicine.isOnWeekday(date.weekday)) {
-    final createdMinute = created.hour * 60 + created.minute;
-    for (final time in medicine.times) {
-      final minuteOfDay = time.hour * 60 + time.minute;
-      // 등록한 날, 등록하기 전에 지나간 시각은 예정이 아니었다.
-      if (date == createdDay && minuteOfDay < createdMinute) continue;
-      scheduled.add(minuteOfDay);
+  final createdMinute = created.hour * 60 + created.minute;
+  final current = <int>{
+    if (!date.isBefore(createdDay) && medicine.isOnWeekday(date.weekday))
+      for (final time in medicine.times) time.hour * 60 + time.minute,
+  };
+
+  // 예정에 없던 시각의 기록은 가장 가까운 남은 현재 시각과 짝짓는다.
+  // 거리가 같으면 더 이른 시각과 짝짓는다.
+  final unmatched = current.difference(recorded).toList()..sort();
+  for (final record in recorded.difference(current).toList()..sort()) {
+    if (unmatched.isEmpty) break;
+    var best = 0;
+    for (var i = 1; i < unmatched.length; i++) {
+      final closer =
+          (unmatched[i] - record).abs() < (unmatched[best] - record).abs();
+      if (closer) best = i;
     }
+    unmatched.removeAt(best);
   }
+  final stillMissing = unmatched.where(
+    (minuteOfDay) => !(date == createdDay && minuteOfDay < createdMinute),
+  );
 
   final taken = recorded.toList()..sort();
-  final missing = scheduled.difference(recorded).toList()..sort();
-  // 예정에 없던 시각의 기록 한 건마다 「기록 없음」 한 건을 뺀다(이른 것부터).
-  final moved = recorded.difference(scheduled).length;
-  final stillMissing = missing.skip(moved);
 
   return [
     for (final minuteOfDay in taken) dose(minuteOfDay, taken: true),

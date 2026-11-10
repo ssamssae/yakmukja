@@ -11,7 +11,7 @@ import 'history_screen.dart';
 import 'policy_screen.dart';
 import 'trash_screen.dart';
 
-/// 설정 — 평가 / 피드백 / 광고제거 / 구매복원 / 휴지통 / 약관 / 개인정보.
+/// 설정 — 평가 / 피드백 / 지난 기록 / 휴지통 / 광고제거 / 구매복원 / 약관 / 개인정보.
 /// 광고 제거 구매와 구매 복원 줄은 구매 후에도 남긴다. (애플 심사 3.1.1)
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});

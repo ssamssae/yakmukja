@@ -91,6 +91,59 @@ void main() {
     expect(history.single.doses.map(line), ['21:00 혈압약 X']);
   });
 
+  test('등록한 날의 이른 시각 체크가 저녁 놓침을 숨기지 않는다', () {
+    // 15:00 에 등록, 시각은 8:00·21:00. 홈은 8:00 도 체크할 수 있다.
+    final history = buildDoseHistory([
+      medicine(
+        '혈압약',
+        times: [(8, 0), (21, 0)],
+        createdAt: DateTime(2026, 11, 9, 15, 0),
+        taken: ['2026-11-09_08:00'],
+      ),
+    ], today);
+
+    expect(history.single.doses.map(line), ['8:00 혈압약 O', '21:00 혈압약 X']);
+  });
+
+  test('저녁 시각을 바꾼 뒤에도 아침 놓침이 보인다', () {
+    // 지금은 9:00·22:00. 어제는 21:00 만 체크했다.
+    final history = buildDoseHistory([
+      medicine('혈압약', times: [(9, 0), (22, 0)], taken: ['2026-11-09_21:00']),
+    ], today);
+
+    expect(history.first.doses.map(line), ['9:00 혈압약 X', '21:00 혈압약 O']);
+  });
+
+  test('등록한 날의 이른 옛 시각 체크는 등록 뒤 놓침을 지우지 않는다', () {
+    // 15:00 등록, 지금은 9:00·22:00. 8:00 체크는 등록 전 9:00 과 가깝다.
+    final history = buildDoseHistory([
+      medicine(
+        '혈압약',
+        times: [(9, 0), (22, 0)],
+        createdAt: DateTime(2026, 11, 9, 15, 0),
+        taken: ['2026-11-09_08:00'],
+      ),
+    ], today);
+
+    expect(history.single.doses.map(line), ['8:00 혈압약 O', '22:00 혈압약 X']);
+  });
+
+  test('달이 바뀌어도 어제는 전달 마지막 날이다', () {
+    final nov1 = DateTime(2026, 11, 1, 8, 0);
+    final history = buildDoseHistory([
+      medicine(
+        '혈압약',
+        createdAt: DateTime(2026, 10, 1),
+        taken: ['2026-10-31_08:00'],
+      ),
+    ], nov1);
+
+    expect(history, hasLength(30));
+    expect(history.first.date, DateTime(2026, 10, 31));
+    expect(history.first.doses.map(line), ['8:00 혈압약 O']);
+    expect(history.last.date, DateTime(2026, 10, 2));
+  });
+
   test('요일을 정한 약은 그 요일에만 나오고, 약이 없던 날은 건너뛴다', () {
     final history = buildDoseHistory([
       // 월·수·금.

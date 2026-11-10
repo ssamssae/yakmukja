@@ -2,6 +2,10 @@ import 'package:hive_ce/hive.dart';
 
 part 'medicine.g.dart';
 
+/// 복용 기록을 남기는 날 수. 지난 기록 화면도 이 날 수만큼 보여 준다.
+/// (T-261110-039)
+const int doseRecordKeepDays = 30;
+
 @HiveType(typeId: 0)
 class Medicine extends HiveObject {
   @HiveField(0)
@@ -101,13 +105,17 @@ class Medicine extends HiveObject {
     save();
   }
 
-  // takenRecords 는 "yyyy-MM-dd_HH:mm" 형식. 30일 초과 레코드를 제거한다.
-  // 앱 기동 시 한 번 호출하면 무한 누적을 막는다.
-  void pruneOldRecords({int keepDays = 30}) {
-    final cutoff = DateTime.now().subtract(Duration(days: keepDays));
+  // takenRecords 는 "yyyy-MM-dd_HH:mm" 형식. [doseRecordKeepDays]일을 넘긴
+  // 레코드를 제거한다. 앱 기동 시 한 번 호출하면 무한 누적을 막는다.
+  // 달력 날짜로 자른다. Duration 으로 빼면 서머타임에 하루가 어긋날 수 있다.
+  void pruneOldRecords({int keepDays = doseRecordKeepDays}) {
+    final now = DateTime.now();
+    final cutoff = DateTime(now.year, now.month, now.day - keepDays);
     final cutoffStr =
         '${cutoff.year}-${cutoff.month.toString().padLeft(2, '0')}-${cutoff.day.toString().padLeft(2, '0')}';
-    final pruned = takenRecords.where((r) => r.compareTo(cutoffStr) >= 0).toList();
+    final pruned = takenRecords
+        .where((r) => r.compareTo(cutoffStr) >= 0)
+        .toList();
     if (pruned.length != takenRecords.length) {
       takenRecords = pruned;
       save();

@@ -341,11 +341,13 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// 머리말을 누르면 지난 기록을 연다. (T-261110-039)
+  /// 머리말을 누르면 지난 기록을 연다. 홈의 시계를 그대로 넘긴다. (T-261110-039)
   void _openHistory() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute<void>(builder: (_) => const HistoryScreen()));
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => HistoryScreen(clock: widget.clock),
+      ),
+    );
   }
 
   String _dateLabel(DateTime now) {
