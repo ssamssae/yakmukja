@@ -103,6 +103,18 @@ void main() {
     expect(inDay('2026-11-09', find.text('기록 없음')), findsOneWidget);
   });
 
+  testWidgets('먹은 약 줄에는 「먹었어요」, 안 먹은 약 줄에는 「기록 없음」이 붙는다', (tester) async {
+    await add('혈압약', taken: ['2026-11-09_08:00']);
+    await add('수면 보조제', hour: 21, minute: 30);
+    await pumpHistory(tester);
+
+    double rowOf(String text) =>
+        tester.getCenter(inDay('2026-11-09', find.text(text))).dy;
+    // 상태 글은 그 약 이름과 같은 줄(세로 위치)에 있다.
+    expect((rowOf('먹었어요') - rowOf('혈압약')).abs(), lessThan(16));
+    expect((rowOf('기록 없음') - rowOf('수면 보조제')).abs(), lessThan(16));
+  });
+
   testWidgets('그제부터는 「어제」 머리표 없이 날짜만 보인다', (tester) async {
     await add('혈압약');
     await pumpHistory(tester);
