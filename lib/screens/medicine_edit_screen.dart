@@ -17,6 +17,26 @@ class MedicineEditScreen extends StatefulWidget {
 
   bool get isEditing => medicine != null;
 
+  /// 복용량 선택 창의 양: 0.5~10(0.5 단위)에 물약용 큰 양을 더한다. (T-261110-029)
+  static final List<String> dosageAmounts = [
+    for (int i = 1; i <= 20; i++) (i * 0.5).toString().replaceAll('.0', ''),
+    '15',
+    '20',
+    '25',
+    '30',
+  ];
+
+  /// 복용량 단위. 첫 칸(알)이 기본값이다. (T-261110-029)
+  static const List<String> dosageUnits = [
+    '알',
+    '캡슐',
+    '포',
+    '개',
+    'ml',
+    '방울',
+    '회',
+  ];
+
   @override
   State<MedicineEditScreen> createState() => _MedicineEditScreenState();
 }
@@ -32,11 +52,7 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
   // 요일 칩 라벨 (월→일, ISO 1..7 순서)
   static const _weekdayLabels = ['월', '화', '수', '목', '금', '토', '일'];
 
-  // 용량: 0.5 ~ 10 (0.5 단위)
-  static final List<String> _dosageOptions = [
-    for (int i = 1; i <= 20; i++) (i * 0.5).toString().replaceAll('.0', ''),
-  ];
-  String? _dosage; // null이면 아직 선택 안 함
+  String? _dosage; // null이면 고르지 않음(선택 사항)
 
   @override
   void initState() {
@@ -61,9 +77,16 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
   }
 
   void _showDosagePicker() {
-    final currentRaw = _dosage?.replaceAll('알', '').trim();
-    int tempIndex = _dosageOptions.indexOf(currentRaw ?? '1');
-    if (tempIndex < 0) tempIndex = 1;
+    final amounts = MedicineEditScreen.dosageAmounts;
+    const units = MedicineEditScreen.dosageUnits;
+    // 「5ml」 → 양 5, 단위 ml. 고른 적이 없거나 모르는 값이면 1알에서 시작한다.
+    final current = RegExp(
+      r'^\s*([0-9]+(?:\.[0-9]+)?)\s*(.*)$',
+    ).firstMatch(_dosage ?? '');
+    int amountIndex = amounts.indexOf(current?.group(1) ?? '1');
+    if (amountIndex < 0) amountIndex = amounts.indexOf('1');
+    int unitIndex = units.indexOf(current?.group(2)?.trim() ?? '');
+    if (unitIndex < 0) unitIndex = 0;
 
     showModalBottomSheet(
       context: context,
@@ -104,7 +127,8 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                       TextButton(
                         onPressed: () {
                           setState(
-                            () => _dosage = '${_dosageOptions[tempIndex]}알',
+                            () => _dosage =
+                                '${amounts[amountIndex]}${units[unitIndex]}',
                           );
                           Navigator.pop(ctx);
                         },
@@ -121,24 +145,54 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                   ),
                 ),
                 Expanded(
-                  child: CupertinoPicker(
-                    scrollController: FixedExtentScrollController(
-                      initialItem: tempIndex,
-                    ),
-                    itemExtent: 44,
-                    onSelectedItemChanged: (i) => tempIndex = i,
+                  child: Row(
                     children: [
-                      for (final d in _dosageOptions)
-                        Center(
-                          child: Text(
-                            '$d알',
-                            style: renewalStyle(
-                              22,
-                              FontWeight.w600,
-                              RenewalColors.ink,
-                            ),
+                      Expanded(
+                        child: CupertinoPicker(
+                          key: const Key('dosage-amount-picker'),
+                          scrollController: FixedExtentScrollController(
+                            initialItem: amountIndex,
                           ),
+                          itemExtent: 44,
+                          onSelectedItemChanged: (i) => amountIndex = i,
+                          children: [
+                            for (final amount in amounts)
+                              Center(
+                                child: Text(
+                                  amount,
+                                  style: renewalStyle(
+                                    22,
+                                    FontWeight.w600,
+                                    RenewalColors.ink,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
+                      ),
+                      Expanded(
+                        child: CupertinoPicker(
+                          key: const Key('dosage-unit-picker'),
+                          scrollController: FixedExtentScrollController(
+                            initialItem: unitIndex,
+                          ),
+                          itemExtent: 44,
+                          onSelectedItemChanged: (i) => unitIndex = i,
+                          children: [
+                            for (final unit in units)
+                              Center(
+                                child: Text(
+                                  unit,
+                                  style: renewalStyle(
+                                    22,
+                                    FontWeight.w600,
+                                    RenewalColors.ink,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -335,12 +389,7 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
   Future<void> _save() async {
     if (_isSaving) return;
     if (!_formKey.currentState!.validate()) return;
-    if (_dosage == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('복용량을 추가해 주세요.')));
-      return;
-    }
+    // 복용량은 선택 사항이다 — 비워 두면 홈에도 복용량을 적지 않는다. (T-261110-029)
     if (_times.isEmpty) {
       ScaffoldMessenger.of(
         context,
@@ -363,7 +412,7 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
       if (existing == null) {
         final medicine = Medicine(
           name: _nameCtrl.text.trim(),
-          dosage: _dosage!,
+          dosage: _dosage ?? '',
           times: _times,
           memo: '',
           createdAt: DateTime.now(),
@@ -373,7 +422,7 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
       } else {
         existing
           ..name = _nameCtrl.text.trim()
-          ..dosage = _dosage!
+          ..dosage = _dosage ?? ''
           ..times = _times
           ..weekdays = weekdays;
         await existing.save();
@@ -468,6 +517,8 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                         const SizedBox(height: 10),
                         _SectionCard(
                           title: '복용량',
+                          // 비워 둬도 저장된다. (T-261110-029)
+                          hint: '(선택)',
                           trailing: _AddPillButton(
                             semanticsLabel: '복용량 추가',
                             onTap: _showDosagePicker,
@@ -771,11 +822,19 @@ class _NameCard extends StatelessWidget {
 }
 
 class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.title, required this.child, this.trailing});
+  const _SectionCard({
+    required this.title,
+    required this.child,
+    this.trailing,
+    this.hint,
+  });
 
   final String title;
   final Widget child;
   final Widget? trailing;
+
+  /// 제목 옆에 흐리게 붙는 짧은 말. 예: 「(선택)」.
+  final String? hint;
 
   @override
   Widget build(BuildContext context) {
@@ -792,6 +851,17 @@ class _SectionCard extends StatelessWidget {
                   title,
                   style: renewalStyle(16, FontWeight.w800, RenewalColors.ink),
                 ),
+                if (hint != null) ...[
+                  const SizedBox(width: 6),
+                  Text(
+                    hint!,
+                    style: renewalStyle(
+                      13,
+                      FontWeight.w600,
+                      RenewalColors.faint,
+                    ),
+                  ),
+                ],
                 const Spacer(),
                 ?trailing,
               ],
