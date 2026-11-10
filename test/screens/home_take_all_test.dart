@@ -4,9 +4,11 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce/hive.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:yakmukja/main.dart';
 import 'package:yakmukja/models/medicine.dart';
 import 'package:yakmukja/screens/home_screen.dart';
+import 'package:yakmukja/screens/main_shell.dart';
 import 'package:yakmukja/services/notification_service.dart';
 import 'package:yakmukja/theme/app_theme.dart';
 
@@ -143,7 +145,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
 
-    expect(find.text('약 2개를 먹었다고 표시했어요'), findsOneWidget);
+    expect(find.text('아침 8:00 약 2개를 먹었다고 표시했어요'), findsOneWidget);
     expect(taken(b), isTrue);
     expect(taken(c), isTrue);
 
@@ -155,7 +157,7 @@ void main() {
     // 누르기 전에 이미 먹었던 약은 그대로 둔다.
     expect(taken(already), isTrue);
 
-    // 안내가 내려갈 때까지 흘려보낸다.
+    // 「되돌리기」를 눌러 닫히는 애니메이션을 흘려보낸다.
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
   });
@@ -192,6 +194,186 @@ void main() {
 
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('안내는 몇 초 뒤 스스로 내려간다', (tester) async {
+    await add('혈압약', 8, 0);
+    await add('비타민', 8, 0);
+    await pumpHome(tester, todayAt(8, 5));
+
+    await tester.tap(find.byKey(takeAll));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('되돌리기'), findsOneWidget);
+
+    // 계속 남아 있으면 다른 화면의 단추를 가리고 다른 안내도 막는다.
+    await tester.pump(const Duration(seconds: 8));
+    await tester.pumpAndSettle();
+
+    expect(find.text('되돌리기'), findsNothing);
+  });
+
+  testWidgets('화면 읽기 탐색을 쓰면 안내가 스스로 내려가지 않고 닫기 단추가 있다', (tester) async {
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(accessibleNavigation: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    await add('혈압약', 8, 0);
+    await add('비타민', 8, 0);
+    await pumpHome(tester, todayAt(8, 5));
+
+    await tester.tap(find.byKey(takeAll));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 30));
+    expect(find.text('되돌리기'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.close));
+    await tester.pumpAndSettle();
+
+    expect(find.text('되돌리기'), findsNothing);
+  });
+
+  testWidgets('누른 직후 같은 자리를 또 눌러도 다음 시각 약은 표시되지 않는다', (tester) async {
+    await add('혈압약', 8, 0);
+    await add('비타민', 8, 0);
+    final evening1 = await add('오메가3', 20, 0);
+    final evening2 = await add('유산균', 20, 0);
+    await pumpHome(tester, todayAt(8, 5));
+
+    final spot = tester.getCenter(find.byKey(takeAll));
+    await tester.tapAt(spot);
+    // 화면이 바뀌어 같은 자리에 저녁 약의 「모두 먹었어요」가 올라온다.
+    await tester.pump(const Duration(milliseconds: 150));
+    expect(find.text('저녁 8:00 약 2개 모두 먹었어요'), findsOneWidget);
+    await tester.tapAt(spot);
+    await tester.pump();
+
+    expect(taken(evening1), isFalse);
+    expect(taken(evening2), isFalse);
+
+    // 잠깐 뒤에는 다시 누를 수 있다.
+    await tester.pump(const Duration(milliseconds: 1000));
+    await tester.tapAt(spot);
+    await tester.pump();
+
+    expect(taken(evening1), isTrue);
+    expect(taken(evening2), isTrue);
+
+    await tester.pump(const Duration(seconds: 8));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('「먹었어요」를 연달아 눌러도 다음 약은 표시되지 않는다', (tester) async {
+    final morning = await add('혈압약', 8, 0);
+    final evening = await add('오메가3', 20, 0);
+    await pumpHome(tester, todayAt(8, 5));
+
+    final spot = tester.getCenter(find.byKey(const Key('home-take-button')));
+    await tester.tapAt(spot);
+    await tester.pump(const Duration(milliseconds: 150));
+    await tester.tapAt(spot);
+    await tester.pump();
+
+    expect(taken(morning), isTrue);
+    expect(taken(evening), isFalse);
+
+    // 반 초쯤 지나면 다음 약을 누를 수 있다.
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tapAt(spot);
+    await tester.pump();
+
+    expect(taken(evening), isTrue);
+  });
+
+  testWidgets('되돌리기 전에 손으로 되돌린 약은 다시 먹음으로 바뀌지 않는다', (tester) async {
+    final a = await add('혈압약', 8, 0);
+    final b = await add('비타민', 8, 0);
+    await pumpHome(tester, todayAt(8, 5));
+
+    await tester.tap(find.byKey(takeAll));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    // 하나를 손으로 되돌린다.
+    a.toggleTaken(a.times.first);
+    await tester.pump();
+    expect(taken(a), isFalse);
+
+    await tester.tap(find.text('되돌리기'));
+    await tester.pump();
+
+    expect(taken(a), isFalse);
+    expect(taken(b), isFalse);
+
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('두 묶음을 이어서 표시하면 안내는 마지막 것만 남는다', (tester) async {
+    await add('혈압약', 8, 0);
+    await add('비타민', 8, 0);
+    await add('오메가3', 20, 0);
+    await add('유산균', 20, 0);
+    await pumpHome(tester, todayAt(8, 5));
+
+    await tester.tap(find.byKey(takeAll));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1100));
+    await tester.tap(find.byKey(takeAll));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('저녁 8:00 약 2개를 먹었다고 표시했어요'), findsOneWidget);
+    expect(find.text('아침 8:00 약 2개를 먹었다고 표시했어요'), findsNothing);
+
+    await tester.pump(const Duration(seconds: 8));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('바닥 메뉴가 있는 실제 화면에서도 안내는 메뉴 위에 떴다가 스스로 내려가고, 그 뒤 다른 안내가 뜬다', (
+    tester,
+  ) async {
+    PackageInfo.setMockInitialValues(
+      appName: 'yakmukja',
+      packageName: 'com.ssamssae.yakmukja',
+      version: '1.1.1',
+      buildNumber: '14',
+      buildSignature: '',
+    );
+    tester.view.physicalSize = const Size(402, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await add('혈압약', 8, 0);
+    await add('비타민', 8, 0);
+    await tester.pumpWidget(
+      MaterialApp(theme: AppTheme.light, home: const MainShell()),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    await tester.tap(find.byKey(takeAll));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('되돌리기'), findsOneWidget);
+    // 안내가 바닥 메뉴를 덮지 않는다.
+    expect(
+      tester.getRect(find.byType(SnackBar)).bottom,
+      lessThanOrEqualTo(tester.getRect(find.text('약목록')).top),
+    );
+
+    await tester.pump(const Duration(seconds: 8));
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('되돌리기'), findsNothing);
+
+    // 안내가 남아 있으면 뒤에 오는 안내는 줄만 서고 보이지 않는다.
+    ScaffoldMessenger.of(
+      tester.element(find.byType(MainShell)),
+    ).showSnackBar(const SnackBar(content: Text('다른 안내')));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('다른 안내'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump(const Duration(seconds: 1));
   });
 
   testWidgets('시간이 지난 약 묶음에도 「모두 먹었어요」가 나온다', (tester) async {
@@ -238,7 +420,13 @@ void main() {
     await add('오메가3', 8, 0);
     await pumpHome(tester, todayAt(8, 5));
 
-    expect(find.bySemanticsLabel('아침 8:00 약 3개 모두 복용 완료로 표시'), findsOneWidget);
+    final button = find.bySemanticsLabel('아침 8:00 약 3개 모두 복용 완료로 표시');
+    expect(button, findsOneWidget);
+    // 글만이 아니라 「누를 수 있는 단추」로 알려져야 한다.
+    expect(
+      tester.getSemantics(button),
+      containsSemantics(isButton: true, hasTapAction: true),
+    );
     handle.dispose();
   });
 }
