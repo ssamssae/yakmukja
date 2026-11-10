@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 
@@ -63,7 +65,7 @@ String homeClockLabel(int hour, int minute) {
   return '$h:${minute.toString().padLeft(2, '0')}';
 }
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, this.clock});
 
   /// 화면의 오늘 시각. 비우면 [DateTime.now].
@@ -71,7 +73,51 @@ class HomeScreen extends StatelessWidget {
   /// 시험용 시계도 그 오늘 날짜를 쓴다.
   final DateTime Function()? clock;
 
-  DateTime _now() => (clock ?? DateTime.now)();
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+/// 약 저장이 바뀔 때뿐 아니라 시간이 흐를 때도 다시 그린다. (T-261110-020)
+/// - 앱이 다시 앞으로 올 때: 밤에 닫고 아침에 열면 어제 화면이 남던 문제.
+/// - 켜 둔 동안 분이 바뀔 때: 남은 시간 · 「지금」 · 자정 날짜 넘김.
+class _HomeScreenState extends State<HomeScreen> {
+  late final AppLifecycleListener _lifecycle;
+  Timer? _minuteTick;
+
+  DateTime _now() => (widget.clock ?? DateTime.now)();
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycle = AppLifecycleListener(
+      onResume: _refreshNow,
+      onPause: () => _minuteTick?.cancel(),
+    );
+    _armMinuteTick();
+  }
+
+  @override
+  void dispose() {
+    _minuteTick?.cancel();
+    _lifecycle.dispose();
+    super.dispose();
+  }
+
+  void _refreshNow() {
+    if (!mounted) return;
+    setState(() {});
+    _armMinuteTick();
+  }
+
+  /// 다음 분이 시작된 직후에 한 번 다시 그리고, 그 뒤 다시 건다.
+  void _armMinuteTick() {
+    _minuteTick?.cancel();
+    final now = _now();
+    final untilNextMinute = Duration(
+      milliseconds: 60000 - (now.second * 1000 + now.millisecond) + 50,
+    );
+    _minuteTick = Timer(untilNextMinute, _refreshNow);
+  }
 
   @override
   Widget build(BuildContext context) {
