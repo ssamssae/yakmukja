@@ -138,6 +138,7 @@ class _HomeScreenState extends State<HomeScreen> {
             builder: (context, box, _) {
               final now = _now();
               final entries = _todayEntries(box, now);
+              final offDay = _offDayMedicines(box, now);
               final nowMinute = now.hour * 60 + now.minute;
               final nextIndex = pickNextDoseIndex([
                 for (final entry in entries)
@@ -150,7 +151,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ];
               final takenCount = entries.where((entry) => entry.taken).length;
               return ListView(
-                physics: entries.isEmpty
+                physics: entries.isEmpty && offDay.isEmpty
                     ? const NeverScrollableScrollPhysics()
                     : null,
                 padding: EdgeInsets.fromLTRB(
@@ -164,10 +165,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     dateLabel: _dateLabel(now),
                     taken: takenCount,
                     total: entries.length,
+                    offDayOnly: entries.isEmpty && offDay.isNotEmpty,
                   ),
                   const SizedBox(height: 22),
-                  if (entries.isEmpty)
+                  if (entries.isEmpty && offDay.isEmpty)
                     const _EmptyState()
+                  else if (entries.isEmpty)
+                    const _EmptyState.offDay()
                   else if (next == null)
                     const _AllDoneCard()
                   else
@@ -177,6 +181,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     _RestHeader(count: rest.length),
                     const SizedBox(height: 12),
                     _RestList(entries: rest),
+                  ],
+                  if (offDay.isNotEmpty) ...[
+                    const SizedBox(height: 30),
+                    _RestHeader(title: '오늘 쉬는 약', count: offDay.length),
+                    const SizedBox(height: 12),
+                    _OffDayList(medicines: offDay),
                   ],
                 ],
               );
@@ -204,6 +214,16 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     list.sort((a, b) => a.minuteOfDay.compareTo(b.minuteOfDay));
     return list;
+  }
+
+  /// 등록은 돼 있지만 오늘 먹는 요일이 아닌 약. 휴지통 약은 뺀다. (T-261110-021)
+  List<Medicine> _offDayMedicines(Box<Medicine> box, DateTime now) {
+    final today = now.weekday;
+    return [
+      for (final medicine in box.values)
+        if (medicine.deletedAt == null && !medicine.isOnWeekday(today))
+          medicine,
+    ];
   }
 }
 
@@ -283,15 +303,23 @@ class _Head extends StatelessWidget {
     required this.dateLabel,
     required this.taken,
     required this.total,
+    this.offDayOnly = false,
   });
 
   final String dateLabel;
   final int taken;
   final int total;
 
+  /// 약은 있지만 오늘 먹는 요일의 약이 하나도 없는 날.
+  final bool offDayOnly;
+
   @override
   Widget build(BuildContext context) {
-    final title = total == 0 ? '아직 등록된 약이 없어요' : '오늘 $taken/$total 먹었어요';
+    final title = total > 0
+        ? '오늘 $taken/$total 먹었어요'
+        : offDayOnly
+        ? '오늘은 먹을 약이 없어요'
+        : '아직 등록된 약이 없어요';
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Row(
@@ -625,9 +653,10 @@ class _Tag extends StatelessWidget {
 }
 
 class _RestHeader extends StatelessWidget {
-  const _RestHeader({required this.count});
+  const _RestHeader({required this.count, this.title = '오늘 나머지'});
 
   final int count;
+  final String title;
 
   @override
   Widget build(BuildContext context) {
@@ -636,7 +665,7 @@ class _RestHeader extends StatelessWidget {
       child: Row(
         children: [
           Text(
-            '오늘 나머지',
+            title,
             style: renewalStyle(18, FontWeight.w800, RenewalColors.ink),
           ),
           const SizedBox(width: 6),
@@ -835,12 +864,22 @@ class _AllDoneCard extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  const _EmptyState()
+    : cardKey = const Key('home-empty'),
+      message = '아래 + 약등록을 눌러\n약을 추가해 보세요';
+
+  /// 약은 있지만 오늘 먹는 요일이 아닌 날. (T-261110-021)
+  const _EmptyState.offDay()
+    : cardKey = const Key('home-off-day'),
+      message = '오늘은 쉬는 날이에요';
+
+  final Key cardKey;
+  final String message;
 
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      key: const Key('home-empty'),
+      key: cardKey,
       decoration: renewalCardDecoration(
         radius: RenewalRadius.nowCard,
         shadows: renewalNowShadows,
@@ -871,7 +910,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              '아래 + 약등록을 눌러\n약을 추가해 보세요',
+              message,
               textAlign: TextAlign.center,
               style: renewalStyle(
                 16,
@@ -879,6 +918,115 @@ class _EmptyState extends StatelessWidget {
                 RenewalColors.body,
                 height: 1.45,
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 오늘 먹는 요일이 아닌 약 목록. 누르면 그 약의 수정 화면으로 간다. (T-261110-021)
+class _OffDayList extends StatelessWidget {
+  const _OffDayList({required this.medicines});
+
+  final List<Medicine> medicines;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: renewalCardDecoration(),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(RenewalRadius.restCard),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          children: [
+            for (final (i, medicine) in medicines.indexed) ...[
+              if (i > 0)
+                const Divider(
+                  height: 1,
+                  thickness: 1,
+                  indent: 72,
+                  endIndent: 18,
+                  color: RenewalColors.line,
+                ),
+              _OffDayRow(medicine: medicine),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OffDayRow extends StatelessWidget {
+  const _OffDayRow({required this.medicine});
+
+  final Medicine medicine;
+
+  @override
+  Widget build(BuildContext context) {
+    final look = lookForMedicineName(medicine.name);
+    final times = [
+      for (final time in medicine.times)
+        '${homePeriodLabel(time.hour)} ${homeClockLabel(time.hour, time.minute)}',
+    ].join(', ');
+    return InkWell(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => MedicineEditScreen(medicine: medicine),
+          ),
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: look.soft,
+                shape: BoxShape.circle,
+              ),
+              child: Opacity(
+                opacity: 0.55,
+                child: PillGlyph(look: look, size: 27),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    medicine.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: renewalStyle(16, FontWeight.w700, RenewalColors.ink),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${medicine.weekdayLabel} · $times',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: renewalStyle(
+                      13,
+                      FontWeight.w400,
+                      RenewalColors.faint,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              size: 22,
+              color: RenewalColors.hush,
             ),
           ],
         ),
