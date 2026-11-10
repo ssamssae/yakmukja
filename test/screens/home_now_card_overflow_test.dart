@@ -129,6 +129,18 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('폭 320·글씨 2배에서 긴 「10시간 50분 지남」은 줄을 바꿔 카드 안에 들어온다', (
+      tester,
+    ) async {
+      await add();
+      await pumpHome(tester, todayAt(18, 50), width: 320, textScale: 2);
+
+      expect(tester.takeException(), isNull);
+      final card = cardRect(tester);
+      final remain = tester.getRect(find.text('10시간 50분 지남'));
+      expect(remain.right, lessThanOrEqualTo(card.right));
+    });
+
     testWidgets('보통 화면(폭 390)에서는 종전처럼 한 줄이고 남은 시간이 오른쪽 끝에 붙는다', (tester) async {
       await add(hour: 21, minute: 30);
       await pumpHome(tester, todayAt(21, 0), width: 390);

@@ -67,6 +67,18 @@ String doseRemainText(int doseMinute, int nowMinute) {
   return '지금';
 }
 
+/// 큰 카드의 「먹었어요」를 누른 뒤 다음 누름을 받지 않는 시간. 누르면 같은 자리에 다음
+/// 약의 단추가 올라오므로, 연달아 눌러 다음 약까지 표시되는 것을 막는다. 일부러 이어
+/// 누르는 것은 막지 않을 만큼 짧다. (T-261110-036)
+const Duration takeTapGuard = Duration(milliseconds: 400);
+
+/// 「모두 먹었어요」를 누른 뒤 다음 누름을 받지 않는 시간. 한 번에 여러 약이 바뀌므로
+/// 더 길게 둔다. (T-261110-036)
+const Duration takeAllTapGuard = Duration(seconds: 1);
+
+/// 「모두 먹었어요」 뒤의 되돌리기 안내가 떠 있는 시간. (T-261110-036)
+const Duration takeAllNoticeDuration = Duration(seconds: 6);
+
 /// 메인 시간대. 새벽 · 아침 · 오후 · 저녁.
 String homePeriodLabel(int hour) {
   if (hour < 6) return '새벽';
@@ -120,6 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _minuteTick?.cancel();
+    _takeGuard?.cancel();
     _lifecycle.dispose();
     NotificationService.enabled.removeListener(_onPermissionChanged);
     super.dispose();
@@ -149,6 +162,61 @@ class _HomeScreenState extends State<HomeScreen> {
     } finally {
       _enablingNotifications = false;
     }
+  }
+
+  // 큰 카드의 복용 단추를 방금 눌렀다 — 잠깐 다음 누름을 받지 않는다. (T-261110-036)
+  Timer? _takeGuard;
+
+  /// 지금 누름을 받아도 되면 true 를 돌려주고, [guard] 동안 다음 누름을 막는다.
+  bool _acceptTakeTap(Duration guard) {
+    if (_takeGuard != null) return false;
+    _takeGuard = Timer(guard, () => _takeGuard = null);
+    return true;
+  }
+
+  /// 큰 카드의 「먹었어요」.
+  void _takeOne(_Entry entry) {
+    if (!_acceptTakeTap(takeTapGuard)) return;
+    entry.medicine.toggleTaken(entry.time);
+  }
+
+  /// 큰 카드의 「모두 먹었어요」 — 같은 시각의 안 먹은 약을 한 번에 먹음으로 표시하고,
+  /// 되돌릴 길을 준다. (T-261110-036)
+  void _takeAll(List<_Entry> sameTime, String when) {
+    if (!_acceptTakeTap(takeAllTapGuard)) return;
+    final messenger = ScaffoldMessenger.of(context);
+    // 화면 읽기 탐색을 쓰는 사람은 스스로 닫을 때까지 안내를 둔다.
+    final accessible = MediaQuery.accessibleNavigationOf(context);
+    final marked = <_Entry>[];
+    for (final item in sameTime) {
+      if (item.taken) continue;
+      item.medicine.toggleTaken(item.time);
+      marked.add(item);
+    }
+    if (marked.isEmpty) return;
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text('$when 약 ${marked.length}개를 먹었다고 표시했어요'),
+          // 단추가 있는 안내는 기본이 「계속 떠 있음」이다. 그대로 두면 다른 화면의
+          // 단추를 가리고 다른 안내도 막으므로 몇 초 뒤 내린다.
+          duration: takeAllNoticeDuration,
+          persist: accessible,
+          showCloseIcon: accessible,
+          action: SnackBarAction(
+            label: '되돌리기',
+            onPressed: () {
+              for (final item in marked) {
+                // 그 사이 지워진 약은 건드리지 않는다. 이미 되돌린 약도 그대로 둔다.
+                if (item.medicine.isInBox && item.taken) {
+                  item.medicine.toggleTaken(item.time);
+                }
+              }
+            },
+          ),
+        ),
+      );
   }
 
   void _refreshNow() {
@@ -197,6 +265,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 for (var i = 0; i < entries.length; i++)
                   if (i != nextIndex) entries[i],
               ];
+              // 큰 카드의 약과 같은 시각에 아직 안 먹은 약(큰 카드의 약 포함).
+              // (T-261110-036)
+              final sameTime = next == null
+                  ? const <_Entry>[]
+                  : [
+                      for (final entry in entries)
+                        if (!entry.taken &&
+                            entry.minuteOfDay == next.minuteOfDay)
+                          entry,
+                    ];
               final takenCount = entries.where((entry) => entry.taken).length;
               // 기기에서 알림이 꺼져 있는데 알려 줄 약이 있다. (T-261110-026)
               final notificationsOff =
@@ -234,8 +312,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   else
                     _NowCard(
                       entry: next,
+                      sameTime: sameTime,
                       nowMinute: nowMinute,
                       notificationsOff: notificationsOff,
+                      onTake: () => _takeOne(next),
+                      onTakeAll: () => _takeAll(sameTime, next.when),
                     ),
                   if (rest.isNotEmpty) ...[
                     const SizedBox(height: 30),
@@ -454,11 +535,24 @@ class _ProgressBars extends StatelessWidget {
 class _NowCard extends StatelessWidget {
   const _NowCard({
     required this.entry,
+    required this.sameTime,
     required this.nowMinute,
+    required this.onTake,
+    required this.onTakeAll,
     this.notificationsOff = false,
   });
 
   final _Entry entry;
+
+  /// 「먹었어요」를 눌렀다.
+  final VoidCallback onTake;
+
+  /// 「모두 먹었어요」를 눌렀다.
+  final VoidCallback onTakeAll;
+
+  /// [entry] 와 같은 시각에 아직 안 먹은 약([entry] 포함). 2개 이상이면
+  /// 한 번에 표시하는 단추를 보인다. (T-261110-036)
+  final List<_Entry> sameTime;
   final int nowMinute;
 
   /// 기기에서 알림이 꺼져 있다 — 알림 예고를 하지 않는다.
@@ -656,8 +750,17 @@ class _NowCard extends StatelessWidget {
                   prefix: '${medicine.name} ${entry.time.format()}',
                   taken: false,
                 ),
-                onTap: () => medicine.toggleTaken(entry.time),
+                onTap: onTake,
               ),
+              // 같은 시각에 먹는 약이 더 있으면 한 번에 표시할 수 있다. (T-261110-036)
+              if (sameTime.length >= 2) ...[
+                const SizedBox(height: 10),
+                _TakeAllButton(
+                  text: '${entry.when} 약 ${sameTime.length}개 모두 먹었어요',
+                  label: '${entry.when} 약 ${sameTime.length}개 모두 복용 완료로 표시',
+                  onTap: onTakeAll,
+                ),
+              ],
               // 알림 안내는 복용 시각 전에만 보인다. 시각이 지나면 「지금」 카드에 미래형 문구가 남지 않게 한다.
               // 기기에서 알림이 꺼져 있으면 지키지 못할 예고라 보이지 않는다. (T-261110-026)
               if (entry.minuteOfDay > nowMinute && !notificationsOff) ...[
@@ -696,6 +799,71 @@ class _NowCard extends StatelessWidget {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => MedicineEditScreen(medicine: entry.medicine),
+      ),
+    );
+  }
+}
+
+/// 같은 시각 약을 한 번에 표시하는 보조 단추. 「먹었어요」보다 덜 눈에 띄게 둔다.
+/// (T-261110-036)
+class _TakeAllButton extends StatelessWidget {
+  const _TakeAllButton({
+    required this.text,
+    required this.label,
+    required this.onTap,
+  });
+
+  final String text;
+
+  /// 보조 기술이 읽는 글.
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      button: true,
+      label: label,
+      onTap: onTap,
+      child: ExcludeSemantics(
+        child: Material(
+          key: const Key('home-take-all-button'),
+          color: RenewalColors.green50,
+          borderRadius: BorderRadius.circular(RenewalRadius.button),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(RenewalRadius.button),
+            // 누르기 쉬운 크기(높이 48 이상)를 지킨다. 글이 길면 두 줄이 된다.
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 52),
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.done_all_rounded,
+                    size: 20,
+                    color: RenewalColors.greenDeep,
+                  ),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      text,
+                      textAlign: TextAlign.center,
+                      style: renewalStyle(
+                        15,
+                        FontWeight.w700,
+                        RenewalColors.greenDeep,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
