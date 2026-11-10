@@ -44,6 +44,7 @@ class MedicineEditScreen extends StatefulWidget {
 class _MedicineEditScreenState extends State<MedicineEditScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameCtrl;
+  late final TextEditingController _memoCtrl;
   late List<DoseTime> _times;
   // 복용 요일 (ISO: 1=월 … 7=일). 기본 = 매일(전체 선택).
   late Set<int> _weekdays;
@@ -59,6 +60,7 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
     super.initState();
     final m = widget.medicine;
     _nameCtrl = TextEditingController(text: m?.name ?? '');
+    _memoCtrl = TextEditingController(text: m?.memo ?? '');
     _times = m == null
         ? <DoseTime>[]
         : m.times.map((t) => DoseTime(hour: t.hour, minute: t.minute)).toList();
@@ -73,6 +75,7 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _memoCtrl.dispose();
     super.dispose();
   }
 
@@ -414,7 +417,7 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
           name: _nameCtrl.text.trim(),
           dosage: _dosage ?? '',
           times: _times,
-          memo: '',
+          memo: _memoCtrl.text.trim(),
           createdAt: DateTime.now(),
           weekdays: weekdays,
         );
@@ -424,6 +427,7 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
           ..name = _nameCtrl.text.trim()
           ..dosage = _dosage ?? ''
           ..times = _times
+          ..memo = _memoCtrl.text.trim()
           ..weekdays = weekdays;
         await existing.save();
       }
@@ -645,6 +649,55 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                                 },
                               ),
                             ],
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        // 먹을 차례가 되면 홈 「다음 약」 카드에 보인다. (T-261110-031)
+                        _SectionCard(
+                          title: '메모',
+                          hint: '(선택)',
+                          child: TextField(
+                            key: const Key('medicine-memo-field'),
+                            controller: _memoCtrl,
+                            maxLength: 40,
+                            textInputAction: TextInputAction.done,
+                            style: renewalStyle(
+                              15,
+                              FontWeight.w600,
+                              RenewalColors.ink,
+                            ),
+                            cursorColor: RenewalColors.green,
+                            decoration: InputDecoration(
+                              hintText: '예: 식후 30분, 물과 함께',
+                              hintStyle: renewalStyle(
+                                15,
+                                FontWeight.w500,
+                                RenewalColors.faint,
+                              ),
+                              counterText: '',
+                              isDense: true,
+                              filled: true,
+                              fillColor: RenewalColors.green50,
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 13,
+                                horizontal: 16,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide.none,
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide.none,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: const BorderSide(
+                                  color: RenewalColors.green,
+                                  width: 1.5,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ],

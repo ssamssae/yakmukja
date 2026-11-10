@@ -90,7 +90,14 @@ void main() {
   testWidgets('복용량 칸 제목 옆에 선택 사항 표시가 있다', (tester) async {
     await pumpEdit(tester);
 
-    expect(find.text('(선택)'), findsOneWidget);
+    // 「(선택)」은 다른 칸(메모)에도 붙는다. 복용량 제목과 같은 줄의 것을 본다.
+    final titleRow = find
+        .ancestor(of: find.text('복용량'), matching: find.byType(Row))
+        .first;
+    expect(
+      find.descendant(of: titleRow, matching: find.text('(선택)')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('단위 휠에서 「포」를 고르면 「1포」가 된다', (tester) async {
