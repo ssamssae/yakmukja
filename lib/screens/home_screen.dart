@@ -560,6 +560,37 @@ class _NowCard extends StatelessWidget {
                                   _Tag(text: medicine.weekdayLabel),
                                 ],
                               ),
+                              // 먹을 차례에 볼 메모(예: 식후 30분). (T-261110-031)
+                              if (medicine.memo.trim().isNotEmpty) ...[
+                                const SizedBox(height: 10),
+                                Row(
+                                  key: const Key('home-next-memo'),
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Padding(
+                                      padding: EdgeInsets.only(top: 2),
+                                      child: Icon(
+                                        Icons.sticky_note_2_outlined,
+                                        size: 16,
+                                        color: RenewalColors.faint,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        medicine.memo.trim(),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: renewalStyle(
+                                          14,
+                                          FontWeight.w600,
+                                          RenewalColors.body,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ],
                           ),
                         ),
