@@ -61,6 +61,20 @@ class FakeNotificationCenter {
     return [for (final alarm in sorted) alarm.toString()];
   }
 
+  /// 한 번만 울리는 알림을 이른 날짜부터 「yyyy-MM-dd HH:mm 본문」으로.
+  List<String> get onceAlarms {
+    final once = [
+      for (final alarm in pending.values)
+        if (alarm.once && alarm.at != null) alarm,
+    ]..sort((a, b) => a.at!.compareTo(b.at!));
+    String two(int n) => n.toString().padLeft(2, '0');
+    return [
+      for (final alarm in once)
+        '${alarm.at!.year}-${two(alarm.at!.month)}-${two(alarm.at!.day)} '
+            '${two(alarm.at!.hour)}:${two(alarm.at!.minute)} ${alarm.body}',
+    ];
+  }
+
   /// 옛 판이 걸어 둔 알림처럼, 채널을 거치지 않고 미리 걸어 둔다.
   void seed(int id, {required int hour, int minute = 0, int weekday = 0}) {
     pending[id] = FakeAlarm(
@@ -135,6 +149,7 @@ class FakeNotificationCenter {
             minuteOfDay: at.hour * 60 + at.minute,
             weekday: daily ? 0 : at.weekday,
             once: !daily && !weekly,
+            at: !daily && !weekly ? at : null,
             body: args['body'] as String,
           );
         case 'cancelAllPendingNotifications':
@@ -168,6 +183,7 @@ class FakeAlarm {
     required this.weekday,
     required this.body,
     this.once = false,
+    this.at,
   });
 
   final int minuteOfDay;
@@ -178,6 +194,9 @@ class FakeAlarm {
 
   /// 되풀이 없이 한 번만 울리는 알림.
   final bool once;
+
+  /// 한 번만 울리는 알림이 울릴 날짜·시각.
+  final DateTime? at;
 
   @override
   String toString() {

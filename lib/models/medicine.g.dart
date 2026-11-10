@@ -25,13 +25,14 @@ class MedicineAdapter extends TypeAdapter<Medicine> {
       takenRecords: (fields[5] as List?)?.cast<String>(),
       deletedAt: fields[6] as DateTime?,
       weekdays: (fields[7] as List?)?.cast<int>(),
+      endDate: fields[8] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Medicine obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.name)
       ..writeByte(1)
@@ -47,7 +48,9 @@ class MedicineAdapter extends TypeAdapter<Medicine> {
       ..writeByte(6)
       ..write(obj.deletedAt)
       ..writeByte(7)
-      ..write(obj.weekdays);
+      ..write(obj.weekdays)
+      ..writeByte(8)
+      ..write(obj.endDate);
   }
 
   @override

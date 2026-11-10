@@ -119,6 +119,9 @@ class _HomeScreenState extends State<HomeScreen> {
   late final AppLifecycleListener _lifecycle;
   Timer? _minuteTick;
 
+  /// 화면에 그려 둔 날짜. 켜 둔 채 날이 바뀌면 알림을 다시 맞춘다. (T-261110-042)
+  DateTime? _paintedDay;
+
   // 평가 부탁 — 「먹었어요」를 눌러 오늘 약을 다 먹은 순간을 알아챈다. (T-261110-040)
   late final Box<Medicine> _box;
   late final Listenable _boxChanges;
@@ -146,6 +149,8 @@ class _HomeScreenState extends State<HomeScreen> {
     _box = Hive.box<Medicine>(medicineBoxName);
     _boxChanges = _box.listenable()..addListener(_onDosesChanged);
     _rememberDoseCounts();
+    final now = _now();
+    _paintedDay = DateTime(now.year, now.month, now.day);
     _armMinuteTick();
   }
 
@@ -267,6 +272,8 @@ class _HomeScreenState extends State<HomeScreen> {
     _refreshNow();
     // 기기 설정에서 알림을 켜거나 끄고 돌아왔을 수 있다. (T-261110-026)
     unawaited(NotificationService.refreshPermission());
+    // 끝나는 약의 한 번 울리는 알림은 날짜가 바뀌어야 빠진다. (T-261110-042)
+    unawaited(NotificationService.resyncIfNewDay());
   }
 
   bool _enablingNotifications = false;
@@ -350,9 +357,17 @@ class _HomeScreenState extends State<HomeScreen> {
   void _refreshNow() {
     if (!mounted) return;
     // 날짜가 넘어갔을 수 있다 — 오늘 기준으로 다시 잡는다. (T-261110-040)
+    final now = _now();
+    final day = DateTime(now.year, now.month, now.day);
+    final dayChanged = _paintedDay != null && _paintedDay != day;
+    _paintedDay = day;
     _rememberDoseCounts();
     setState(() {});
     _armMinuteTick();
+    // 앱을 켜 둔 채 날이 바뀌면 끝난 약의 알림을 내린다. (T-261110-042)
+    if (dayChanged) {
+      unawaited(NotificationService.resyncIfNewDay());
+    }
   }
 
   /// 다음 분이 시작된 직후에 한 번 다시 그리고, 그 뒤 다시 건다.
@@ -385,6 +400,9 @@ class _HomeScreenState extends State<HomeScreen> {
               final now = _now();
               final entries = _todayEntries(box, now);
               final offDay = _offDayMedicines(box, now);
+              final ended = _endedMedicines(box, now);
+              final nothingRegistered =
+                  entries.isEmpty && offDay.isEmpty && ended.isEmpty;
               final nowMinute = now.hour * 60 + now.minute;
               final nextIndex = pickNextDoseIndex([
                 for (final entry in entries)
@@ -412,7 +430,7 @@ class _HomeScreenState extends State<HomeScreen> {
               final warnNotificationsOff =
                   notificationsOff && (entries.isNotEmpty || offDay.isNotEmpty);
               return ListView(
-                physics: entries.isEmpty && offDay.isEmpty
+                physics: nothingRegistered
                     ? const NeverScrollableScrollPhysics()
                     : null,
                 padding: EdgeInsets.fromLTRB(
@@ -426,7 +444,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     dateLabel: _dateLabel(now),
                     taken: takenCount,
                     total: entries.length,
-                    offDayOnly: entries.isEmpty && offDay.isNotEmpty,
+                    offDayOnly: entries.isEmpty && !nothingRegistered,
                     onOpenHistory: _openHistory,
                   ),
                   if (warnNotificationsOff) ...[
@@ -434,7 +452,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     _NotificationOffCard(onEnable: _enableNotifications),
                   ],
                   const SizedBox(height: 22),
-                  if (entries.isEmpty && offDay.isEmpty)
+                  if (nothingRegistered)
                     const _EmptyState()
                   else if (entries.isEmpty)
                     const _EmptyState.offDay()
@@ -460,6 +478,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     _RestHeader(title: '오늘 쉬는 약', count: offDay.length),
                     const SizedBox(height: 12),
                     _OffDayList(medicines: offDay),
+                  ],
+                  if (ended.isNotEmpty) ...[
+                    const SizedBox(height: 30),
+                    _RestHeader(title: '끝난 약', count: ended.length),
+                    const SizedBox(height: 12),
+                    _OffDayList(medicines: ended),
                   ],
                 ],
               );
@@ -489,6 +513,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final list = <_Entry>[];
     for (final medicine in box.values) {
       if (medicine.deletedAt != null) continue;
+      // 끝나는 날(포함)이 지난 약은 오늘 목록에 넣지 않는다. (T-261110-042)
+      if (!medicine.isActiveOn(now)) continue;
       if (!medicine.isOnWeekday(today)) continue;
       for (final time in medicine.times) {
         list.add(_Entry(medicine: medicine, time: time));
@@ -498,13 +524,25 @@ class _HomeScreenState extends State<HomeScreen> {
     return list;
   }
 
-  /// 등록은 돼 있지만 오늘 먹는 요일이 아닌 약. 휴지통 약은 뺀다. (T-261110-021)
+  /// 등록은 돼 있지만 오늘 먹는 요일이 아닌 약. 휴지통 약·끝난 약은 뺀다.
+  /// (T-261110-021, T-261110-042)
   List<Medicine> _offDayMedicines(Box<Medicine> box, DateTime now) {
     final today = now.weekday;
     return [
       for (final medicine in box.values)
-        if (medicine.deletedAt == null && !medicine.isOnWeekday(today))
+        if (medicine.deletedAt == null &&
+            medicine.isActiveOn(now) &&
+            !medicine.isOnWeekday(today))
           medicine,
+    ];
+  }
+
+  /// 끝나는 날이 어제 이전인 약. 지우지 않고 홈 아래에 남겨 다시 고치게 한다.
+  /// (T-261110-042)
+  List<Medicine> _endedMedicines(Box<Medicine> box, DateTime now) {
+    return [
+      for (final medicine in box.values)
+        if (medicine.deletedAt == null && !medicine.isActiveOn(now)) medicine,
     ];
   }
 }
