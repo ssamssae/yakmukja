@@ -10,6 +10,7 @@ import '../theme/app_theme.dart';
 import '../theme/renewal_theme.dart';
 import '../widgets/pill_glyph.dart';
 import '../widgets/renewal_check.dart';
+import 'history_screen.dart';
 import 'medicine_edit_screen.dart';
 
 String takenButtonSemanticsLabel({
@@ -297,6 +298,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     taken: takenCount,
                     total: entries.length,
                     offDayOnly: entries.isEmpty && offDay.isNotEmpty,
+                    onOpenHistory: _openHistory,
                   ),
                   if (warnNotificationsOff) ...[
                     const SizedBox(height: 16),
@@ -335,6 +337,15 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
         ],
+      ),
+    );
+  }
+
+  /// 머리말을 누르면 지난 기록을 연다. 홈의 시계를 그대로 넘긴다. (T-261110-039)
+  void _openHistory() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => HistoryScreen(clock: widget.clock),
       ),
     );
   }
@@ -445,12 +456,16 @@ class _Head extends StatelessWidget {
     required this.dateLabel,
     required this.taken,
     required this.total,
+    required this.onOpenHistory,
     this.offDayOnly = false,
   });
 
   final String dateLabel;
   final int taken;
   final int total;
+
+  /// 머리말을 누르면 지난 기록을 연다. (T-261110-039)
+  final VoidCallback onOpenHistory;
 
   /// 약은 있지만 오늘 먹는 요일의 약이 하나도 없는 날.
   final bool offDayOnly;
@@ -462,33 +477,67 @@ class _Head extends StatelessWidget {
         : offDayOnly
         ? '오늘은 먹을 약이 없어요'
         : '아직 등록된 약이 없어요';
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    // 머리말 전체가 「지난 기록」으로 가는 단추다. 날짜 옆 화살표가 그 표시다.
+    return Semantics(
+      key: const Key('home-history-link'),
+      container: true,
+      button: true,
+      label: '$dateLabel, $title, 지난 기록 보기',
+      onTap: onOpenHistory,
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onOpenHistory,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  dateLabel,
-                  style: renewalStyle(14, FontWeight.w600, RenewalColors.date),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              dateLabel,
+                              style: renewalStyle(
+                                14,
+                                FontWeight.w600,
+                                RenewalColors.date,
+                              ),
+                            ),
+                          ),
+                          const Icon(
+                            Icons.chevron_right_rounded,
+                            size: 18,
+                            color: RenewalColors.date,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        title,
+                        style: renewalStyle(
+                          24,
+                          FontWeight.w800,
+                          RenewalColors.ink,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  title,
-                  style: renewalStyle(24, FontWeight.w800, RenewalColors.ink),
-                ),
+                if (total > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10, left: 12),
+                    child: _ProgressBars(taken: taken, total: total),
+                  ),
               ],
             ),
           ),
-          if (total > 0)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10, left: 12),
-              child: _ProgressBars(taken: taken, total: total),
-            ),
-        ],
+        ),
       ),
     );
   }

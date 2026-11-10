@@ -425,7 +425,7 @@ void main() {
     // 글만이 아니라 「누를 수 있는 단추」로 알려져야 한다.
     expect(
       tester.getSemantics(button),
-      containsSemantics(isButton: true, hasTapAction: true),
+      isSemantics(isButton: true, hasTapAction: true),
     );
     handle.dispose();
   });

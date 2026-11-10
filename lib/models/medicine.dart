@@ -2,6 +2,10 @@ import 'package:hive_ce/hive.dart';
 
 part 'medicine.g.dart';
 
+/// 복용 기록을 남기는 날 수. 지난 기록 화면도 이 날 수만큼 보여 준다.
+/// (T-261110-039)
+const int doseRecordKeepDays = 30;
+
 @HiveType(typeId: 0)
 class Medicine extends HiveObject {
   @HiveField(0)
@@ -80,11 +84,14 @@ class Medicine extends HiveObject {
     return d.add(trashRetention).difference(DateTime.now());
   }
 
-  String _todayKey(DoseTime t) {
-    final now = DateTime.now();
-    final d = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-    return '${d}_${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+  /// 복용 기록 한 건의 키 — "yyyy-MM-dd_HH:mm". (T-261110-039)
+  static String recordKey(DateTime day, int hour, int minute) {
+    final d =
+        '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+    return '${d}_${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
   }
+
+  String _todayKey(DoseTime t) => recordKey(DateTime.now(), t.hour, t.minute);
 
   bool isTaken(DoseTime t) => takenRecords.contains(_todayKey(t));
 
@@ -98,13 +105,17 @@ class Medicine extends HiveObject {
     save();
   }
 
-  // takenRecords 는 "yyyy-MM-dd_HH:mm" 형식. 30일 초과 레코드를 제거한다.
-  // 앱 기동 시 한 번 호출하면 무한 누적을 막는다.
-  void pruneOldRecords({int keepDays = 30}) {
-    final cutoff = DateTime.now().subtract(Duration(days: keepDays));
+  // takenRecords 는 "yyyy-MM-dd_HH:mm" 형식. [doseRecordKeepDays]일을 넘긴
+  // 레코드를 제거한다. 앱 기동 시 한 번 호출하면 무한 누적을 막는다.
+  // 달력 날짜로 자른다. Duration 으로 빼면 서머타임에 하루가 어긋날 수 있다.
+  void pruneOldRecords({int keepDays = doseRecordKeepDays}) {
+    final now = DateTime.now();
+    final cutoff = DateTime(now.year, now.month, now.day - keepDays);
     final cutoffStr =
         '${cutoff.year}-${cutoff.month.toString().padLeft(2, '0')}-${cutoff.day.toString().padLeft(2, '0')}';
-    final pruned = takenRecords.where((r) => r.compareTo(cutoffStr) >= 0).toList();
+    final pruned = takenRecords
+        .where((r) => r.compareTo(cutoffStr) >= 0)
+        .toList();
     if (pruned.length != takenRecords.length) {
       takenRecords = pruned;
       save();

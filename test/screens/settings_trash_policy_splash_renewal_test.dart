@@ -65,6 +65,10 @@ void main() {
   testWidgets('settings keeps remove-ads purchase and restore rows', (
     tester,
   ) async {
+    // 줄이 늘어도(「지난 기록」, T-261110-039) 목록 끝까지 한 화면에 그려지게 한다.
+    tester.view.physicalSize = const Size(402, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     await tester.pumpWidget(
       MaterialApp(theme: AppTheme.light, home: const SettingsScreen()),
     );
@@ -74,6 +78,7 @@ void main() {
     expect(find.text('구매 복원'), findsOneWidget);
     expect(find.text('앱 평가하기'), findsOneWidget);
     expect(find.text('피드백 보내기'), findsOneWidget);
+    expect(find.text('지난 기록'), findsOneWidget);
     expect(find.text('휴지통'), findsOneWidget);
     expect(find.text('이용약관'), findsOneWidget);
     expect(find.text('개인정보처리방침'), findsOneWidget);
