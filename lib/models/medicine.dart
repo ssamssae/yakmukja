@@ -54,16 +54,15 @@ class Medicine extends HiveObject {
     this.deletedAt,
     List<int>? weekdays,
     this.endDate,
-  })  : takenRecords = takenRecords ?? [],
-        weekdays = weekdays ?? const [1, 2, 3, 4, 5, 6, 7];
+  }) : takenRecords = takenRecords ?? [],
+       weekdays = weekdays ?? const [1, 2, 3, 4, 5, 6, 7];
 
   /// 매일을 뜻하는 전체 요일 집합.
   static const allWeekdays = [1, 2, 3, 4, 5, 6, 7];
 
   /// 마이그레이션 안전 게터 — weekdays 가 비어있으면(구버전 데이터) "매일"로 본다.
   /// 알림/홈 필터는 항상 이 게터를 사용한다.
-  List<int> get activeWeekdays =>
-      weekdays.isEmpty ? allWeekdays : weekdays;
+  List<int> get activeWeekdays => weekdays.isEmpty ? allWeekdays : weekdays;
 
   /// 매일 복용 여부(전체 7요일 선택).
   bool get isDaily => activeWeekdays.length == 7;
@@ -119,6 +118,15 @@ class Medicine extends HiveObject {
       takenRecords.add(key);
     }
     save();
+  }
+
+  /// 그 날 그 시각을 먹음으로 남긴다. 이미 있으면 그대로 둔다.
+  /// 키 형식은 [toggleTaken] 과 같다(`yyyy-MM-dd_HH:mm`). (T-261110-045)
+  void markTakenOn(DateTime day, DoseTime time) {
+    final key = recordKey(day, time.hour, time.minute);
+    if (takenRecords.contains(key)) return;
+    takenRecords.add(key);
+    if (isInBox) save();
   }
 
   // takenRecords 는 "yyyy-MM-dd_HH:mm" 형식. [doseRecordKeepDays]일을 넘긴
