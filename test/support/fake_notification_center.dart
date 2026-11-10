@@ -18,8 +18,22 @@ class FakeNotificationCenter {
   /// 알림 id → 걸린 알림.
   final pending = <int, FakeAlarm>{};
 
+  /// 이미 울려서 알림창에 떠 있는 알림 id.
+  final shown = <int>{};
+
+  /// 이 id 의 예약은 기기가 거절한다.
+  final failScheduleIds = <int>{};
+
+  /// true 면 기기 시간대를 읽지 못한다 → 알림 준비가 실패한다.
+  bool timezoneFails = false;
+
+  /// 값이 있으면 알림 채널이 이 future 가 끝날 때까지 답하지 않는다
+  /// (느리거나 멈춘 기기).
+  Future<void>? hold;
+
   /// 걸려 있는 알림을 이른 시각부터 「요일칸 HH:mm 본문」으로.
   /// 요일칸은 매일 또는 월~일. 예: `매일 08:00 드실 약이 있어요.`
+  /// 되풀이하지 않는 알림은 앞에 `한 번` 이 붙는다.
   List<String> get alarms {
     final sorted = pending.values.toList()
       ..sort((a, b) {
@@ -47,25 +61,42 @@ class FakeNotificationCenter {
     } else {
       AndroidFlutterLocalNotificationsPlugin.registerWith();
     }
-    messenger.setMockMethodCallHandler(_timezone, (_) async => 'Asia/Seoul');
+    messenger.setMockMethodCallHandler(_timezone, (_) async {
+      if (timezoneFails) throw PlatformException(code: 'timezone_unavailable');
+      return 'Asia/Seoul';
+    });
     messenger.setMockMethodCallHandler(_channel, (call) async {
       methods.add(call.method);
+      final held = hold;
+      if (held != null) await held;
       final args = call.arguments;
       switch (call.method) {
         case 'zonedSchedule':
+          final id = args['id'] as int;
+          if (failScheduleIds.contains(id)) {
+            throw PlatformException(code: 'schedule_failed');
+          }
           final at = DateTime.parse(args['scheduledDateTime'] as String);
-          final daily =
-              args['matchDateTimeComponents'] == DateTimeComponents.time.index;
-          pending[args['id'] as int] = FakeAlarm(
+          // 되풀이 방식: 매일(시각만 맞춤) / 매주(요일+시각) / 없음(한 번만).
+          final match = args['matchDateTimeComponents'];
+          final daily = match == DateTimeComponents.time.index;
+          final weekly = match == DateTimeComponents.dayOfWeekAndTime.index;
+          pending[id] = FakeAlarm(
             minuteOfDay: at.hour * 60 + at.minute,
             weekday: daily ? 0 : at.weekday,
+            once: !daily && !weekly,
             body: args['body'] as String,
           );
         case 'cancelAllPendingNotifications':
+          // 걸어 둔 알림만 지운다. 이미 뜬 알림은 남는다.
+          pending.clear();
         case 'cancelAll':
           pending.clear();
+          shown.clear();
         case 'cancel':
-          pending.remove(args is int ? args : args['id'] as int);
+          final id = args is int ? args : args['id'] as int;
+          pending.remove(id);
+          shown.remove(id);
       }
       return true;
     });
@@ -85,6 +116,7 @@ class FakeAlarm {
     required this.minuteOfDay,
     required this.weekday,
     required this.body,
+    this.once = false,
   });
 
   final int minuteOfDay;
@@ -93,6 +125,9 @@ class FakeAlarm {
   final int weekday;
   final String body;
 
+  /// 되풀이 없이 한 번만 울리는 알림.
+  final bool once;
+
   @override
   String toString() {
     final day = weekday == 0
@@ -100,6 +135,6 @@ class FakeAlarm {
         : FakeNotificationCenter._weekdayNames[weekday - 1];
     final hh = (minuteOfDay ~/ 60).toString().padLeft(2, '0');
     final mm = (minuteOfDay % 60).toString().padLeft(2, '0');
-    return '$day $hh:$mm $body';
+    return '${once ? '한 번 ' : ''}$day $hh:$mm $body';
   }
 }

@@ -24,6 +24,8 @@ void main() {
   late FakeNotificationCenter center;
 
   setUp(() {
+    // 알림 서비스는 앱 전체에서 하나다. 시험마다 처음 상태에서 시작한다.
+    NotificationService.resetForTest();
     center = FakeNotificationCenter()..install(TargetPlatform.iOS);
   });
 
@@ -31,7 +33,6 @@ void main() {
     center.uninstall();
   });
 
-  // 이 파일의 첫 시험이어야 한다 — 아직 아무도 init 을 부르지 않은 상태.
   test('알림 준비(init) 전에는 기기 알림을 건드리지 않는다', () async {
     center.seed(0, hour: 7);
 
@@ -150,6 +151,88 @@ void main() {
     );
 
     expect(center.methods, contains('initialize'));
+    expect(center.alarms, ['매일 08:00 드실 약이 있어요.']);
+  });
+
+  test('다시 맞춰도 이미 울려서 알림창에 떠 있는 알림은 지우지 않는다', () async {
+    await NotificationService.init();
+    center
+      ..seed(0, hour: 8)
+      ..shown.add(0);
+
+    await NotificationService.syncAll([
+      med('혈압약', [
+        [8, 0],
+      ]),
+    ]);
+
+    expect(center.shown, {0});
+    expect(center.alarms, ['매일 08:00 드실 약이 있어요.']);
+  });
+
+  test('한 시각의 예약이 실패해도 나머지 시각 알림은 걸린다', () async {
+    await NotificationService.init();
+    center.failScheduleIds.add(
+      const DoseSlot(hour: 8, minute: 0, weekday: 0, count: 1).id,
+    );
+
+    await NotificationService.syncAll([
+      med('혈압약', [
+        [8, 0],
+        [13, 0],
+        [21, 30],
+      ]),
+    ]);
+
+    expect(center.alarms, ['매일 13:00 드실 약이 있어요.', '매일 21:30 드실 약이 있어요.']);
+  });
+
+  test('알림 준비가 실패했으면 기기 알림을 건드리지 않는다', () async {
+    center
+      ..timezoneFails = true
+      ..seed(0, hour: 7);
+    await NotificationService.init();
+
+    await NotificationService.syncAll([
+      med('혈압약', [
+        [8, 0],
+      ]),
+    ]);
+
+    expect(center.methods, isNot(contains('cancelAllPendingNotifications')));
+    expect(center.alarms, ['매일 07:00 드실 약이 있어요.']);
+  });
+
+  test('알림 준비가 진행 중이면 끝날 때까지 기다렸다가 맞춘다', () async {
+    final init = NotificationService.init();
+    final sync = NotificationService.syncAll([
+      med('혈압약', [
+        [8, 0],
+      ]),
+    ]);
+    await Future.wait([init, sync]);
+
+    expect(center.alarms, ['매일 08:00 드실 약이 있어요.']);
+    expect(
+      center.methods.indexOf('initialize'),
+      lessThan(center.methods.indexOf('cancelAllPendingNotifications')),
+    );
+  });
+
+  test('약 목록을 읽다 실패해도 예외를 던지지 않고, 다음 맞추기는 그대로 된다', () async {
+    await NotificationService.init();
+    final broken = Iterable<Medicine>.generate(
+      1,
+      (_) => throw StateError('damaged record'),
+    );
+
+    await NotificationService.syncAll(broken);
+    await NotificationService.syncAll([
+      med('혈압약', [
+        [8, 0],
+      ]),
+    ]);
+
     expect(center.alarms, ['매일 08:00 드실 약이 있어요.']);
   });
 }

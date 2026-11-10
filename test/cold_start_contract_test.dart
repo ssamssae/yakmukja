@@ -28,6 +28,25 @@ void main() {
     expect(source, isNot(contains('NotificationService.init,')));
   });
 
+  test('startup restores ad removal without waiting for the alarm step', () {
+    final source = File('lib/main.dart').readAsStringSync();
+
+    // 알림 준비는 권한 창이 닫힐 때까지 기다릴 수 있다. 광고 제거 구매 복원이 그 뒤로
+    // 밀리면 구매한 사람에게 배너가 잠깐 보인다. 반대로 알림 맞추기도 스토어 연결을
+    // 기다리지 않는다 — 둘은 서로 기다리지 않고 같이 간다. (T-261110-023 검토)
+    final iapIndex = source.indexOf("'IapService.init'");
+    final alarmIndex = source.indexOf("'NotificationService.initAndSync'");
+    expect(iapIndex, isNonNegative);
+    expect(alarmIndex, isNonNegative);
+    expect(iapIndex, lessThan(alarmIndex));
+    expect(
+      RegExp(
+        r"await _runDeferredStartupStep\(\s*'IapService\.init'",
+      ).hasMatch(source),
+      isFalse,
+    );
+  });
+
   test('banner ad loading initializes ads lazily after the first frame', () {
     final source = File('lib/services/ads_service.dart').readAsStringSync();
 

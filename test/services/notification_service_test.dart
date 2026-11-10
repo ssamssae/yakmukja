@@ -53,4 +53,37 @@ void main() {
       }
     });
   });
+
+  // 하루를 「24시간 뒤」로 세면 서머타임이 바뀌는 날 시:분이 1시간 밀린다.
+  // 그 밀린 시각이 되풀이 알림의 기준이 되므로, 다음에 다시 맞출 때까지 계속 틀린다.
+  group('서머타임이 바뀌는 날에도 시:분이 그대로다', () {
+    setUp(() {
+      // 뉴욕은 2026-11-01 02:00 에 서머타임이 끝난다.
+      tz.setLocalLocation(tz.getLocation('America/New_York'));
+    });
+
+    test('서머타임이 끝나기 전날, 이미 지난 시각은 다음 날 같은 시:분으로 걸린다', () {
+      final now = tz.TZDateTime(tz.local, 2026, 10, 31, 9);
+
+      final r = NotificationService.nextDateTimeForTest(8, 0, now: now);
+
+      expect([r.year, r.month, r.day, r.hour, r.minute], [2026, 11, 1, 8, 0]);
+    });
+
+    test('요일 알림은 서머타임이 끝나는 주를 넘어가도 같은 시:분으로 걸린다', () {
+      final now = tz.TZDateTime(tz.local, 2026, 10, 28, 9); // 수요일
+
+      final r = NotificationService.nextDateTimeOnWeekdayForTest(
+        DateTime.monday,
+        8,
+        0,
+        now: now,
+      );
+
+      expect(
+        [r.year, r.month, r.day, r.hour, r.minute, r.weekday],
+        [2026, 11, 2, 8, 0, DateTime.monday],
+      );
+    });
+  });
 }

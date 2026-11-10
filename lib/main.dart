@@ -98,9 +98,16 @@ void _startDeferredColdStartWork() {
           }
         }
       });
+      // 결제 준비(광고 제거 구매 복원)와 알림 맞추기는 서로 기다리지 않는다.
+      // - 알림 준비는 권한 창이 닫힐 때까지 기다릴 수 있다. 복원이 그 뒤로 밀리면
+      //   구매한 사람에게 배너가 잠깐 보인다.
+      // - 스토어 연결이 느려도 알림은 바로 맞춰져야 한다. (T-261110-023)
+      final iapReady = _runDeferredStartupStep(
+        'IapService.init',
+        IapService.init,
+      );
       if (!kScreenshotMode) {
-        // 알림을 준비하고, 기기에 걸린 알림을 약 목록과 다시 맞춘다. 결제 준비보다
-        // 먼저 한다 — 스토어 연결이 느려도 알림은 바로 맞춰져야 한다. (T-261110-023)
+        // 알림을 준비하고, 기기에 걸린 알림을 약 목록과 다시 맞춘다.
         // 스토어 스크린샷 캡처 때는 알림권한 다이얼로그가 뜨지 않게 건너뛴다.
         await _runDeferredStartupStep(
           'NotificationService.initAndSync',
@@ -109,7 +116,7 @@ void _startDeferredColdStartWork() {
           ),
         );
       }
-      await _runDeferredStartupStep('IapService.init', IapService.init);
+      await iapReady;
       if (!kScreenshotMode) {
         // 스토어 스크린샷 캡처 시 광고 로드를 끈다.
         await _runDeferredStartupStep('AdsService.init', AdsService.init);

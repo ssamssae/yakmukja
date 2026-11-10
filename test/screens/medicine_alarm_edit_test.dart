@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -23,11 +24,13 @@ void main() {
     createdAt: DateTime(2026, 9, 26),
   );
 
-  /// 진짜 시간에서 조건이 될 때까지 최대 3초 기다린다.
-  Future<void> waitFor(bool Function() done) async {
-    for (var i = 0; i < 300 && !done(); i++) {
+  /// 진짜 시간에서 조건이 될 때까지 최대 3초 기다린다. 끝내 안 되면 그 자리에서 실패한다.
+  Future<void> waitFor(bool Function() done, String what) async {
+    for (var i = 0; i < 300; i++) {
+      if (done()) return;
       await Future<void>.delayed(const Duration(milliseconds: 10));
     }
+    fail('3초 안에 되지 않았다: $what');
   }
 
   for (final platform in [TargetPlatform.android, TargetPlatform.iOS]) {
@@ -39,6 +42,7 @@ void main() {
       late Medicine other;
 
       Future<void> open(WidgetTester tester) async {
+        NotificationService.resetForTest();
         center = FakeNotificationCenter()..install(platform);
         await tester.runAsync(() async {
           dir = await Directory.systemTemp.createTemp('medicine_edit_alarm_');
@@ -95,7 +99,7 @@ void main() {
           await tester.pumpAndSettle();
           await tester.runAsync(() async {
             await tester.tap(find.text('저장'));
-            await waitFor(() => center.alarms.length == 2);
+            await waitFor(() => center.alarms.length == 2, '알림 2건으로 줄기');
           });
           await tester.pumpAndSettle();
 
@@ -131,13 +135,53 @@ void main() {
           await tester.pump();
           await tester.pump(const Duration(milliseconds: 400));
           await tester.tap(find.widgetWithText(FilledButton, '삭제'));
-          await tester.runAsync(() => waitFor(() => center.alarms.length == 1));
+          await tester.runAsync(
+            () => waitFor(() => center.alarms.length == 1, '알림 1건으로 줄기'),
+          );
           await tester.pump();
           await tester.pump(const Duration(milliseconds: 400));
 
           expect(first.isInTrash, isTrue);
           expect(center.alarms, ['매일 09:00 드실 약이 있어요.']);
         } finally {
+          await close(tester);
+        }
+      });
+
+      testWidgets('알림 맞추기가 끝나지 않아도 저장하면 화면이 닫힌다', (tester) async {
+        await open(tester);
+        final stuck = Completer<void>();
+        try {
+          await tester.pumpWidget(
+            const MaterialApp(home: Scaffold(body: Text('바닥 화면'))),
+          );
+          unawaited(
+            tester
+                .state<NavigatorState>(find.byType(Navigator))
+                .push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => MedicineEditScreen(medicine: other),
+                  ),
+                ),
+          );
+          await tester.pumpAndSettle();
+          // 기기가 알림 요청에 답하지 않는다.
+          center.hold = stuck.future;
+          final callsBefore = center.methods.length;
+
+          await tester.runAsync(() async {
+            await tester.tap(find.text('저장'));
+            await waitFor(
+              () => center.methods.length > callsBefore,
+              '알림 맞추기 시작',
+            );
+          });
+          await tester.pumpAndSettle();
+
+          expect(find.byType(MedicineEditScreen), findsNothing);
+          expect(find.text('바닥 화면'), findsOneWidget);
+        } finally {
+          stuck.complete();
           await close(tester);
         }
       });

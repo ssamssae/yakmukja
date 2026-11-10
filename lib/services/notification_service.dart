@@ -59,7 +59,9 @@ class NotificationService {
       final tzInfo = await FlutterTimezone.getLocalTimezone();
       tz.setLocalLocation(tz.getLocation(tzInfo.identifier));
 
-      const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const androidSettings = AndroidInitializationSettings(
+        '@mipmap/ic_launcher',
+      );
       const iosSettings = DarwinInitializationSettings(
         requestAlertPermission: true,
         requestBadgePermission: true,
@@ -67,17 +69,24 @@ class NotificationService {
       );
 
       await _plugin.initialize(
-        settings: const InitializationSettings(android: androidSettings, iOS: iosSettings),
+        settings: const InitializationSettings(
+          android: androidSettings,
+          iOS: iosSettings,
+        ),
       );
 
       // iOS 권한 요청
       await _plugin
-          .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+          .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin
+          >()
           ?.requestPermissions(alert: true, badge: true, sound: true);
 
       // Android 권한 요청
       final android = _plugin
-          .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
       await android?.requestNotificationsPermission();
       // Android 12+ 정확한 알람 권한 — 없으면 Doze 에서 지정시각이 지연됨
       await android?.requestExactAlarmsPermission();
@@ -156,7 +165,8 @@ class NotificationService {
     return slots;
   }
 
-  static Future<void> _syncTail = Future<void>.value();
+  /// 마지막으로 줄 선 맞추기. 아직 한 번도 안 했으면 null.
+  static Future<void>? _syncTail;
   static int _syncGeneration = 0;
 
   /// 기기에 걸린 알림을 약 목록과 다시 맞춘다. (T-261110-023)
@@ -164,25 +174,49 @@ class NotificationService {
   /// - 알림 준비([init])가 진행 중이면 기다린다. 준비한 적이 없거나 실패했으면 건너뛴다
   ///   (다음에 앱을 켤 때 [initAndSync] 가 다시 맞춘다).
   /// - 연달아 부르면 마지막 약 목록이 남는다. 실패해도 예외를 던지지 않는다.
+  /// - 매번 전부 지우고 다시 건다. 「이미 같으면 건너뛰기」를 하지 않는 이유: 기기가
+  ///   알림을 잃어도(강제 종료 등) 플러그인이 기억하는 목록은 그대로라, 건너뛰면
+  ///   스스로 복구되지 않는다.
   static Future<void> syncAll(Iterable<Medicine> medicines) {
-    final plan = planSlots(medicines);
+    final List<DoseSlot> plan;
+    try {
+      // 약 목록은 부른 순간의 것으로 굳힌다.
+      plan = planSlots(medicines);
+    } catch (e, st) {
+      debugPrint('[NotificationService.syncAll] plan failed: $e\n$st');
+      return _syncTail ?? Future<void>.value();
+    }
     final generation = ++_syncGeneration;
-    return _syncTail = _syncTail.then((_) async {
+    Future<void> apply() async {
       // 더 새 요청이 뒤에 줄 서 있으면 그쪽이 맞춘다.
       if (generation != _syncGeneration) return;
       await _applyIfReady(plan);
-    });
+    }
+
+    // 한 번에 하나씩: 앞선 맞추기가 끝난 뒤에 건다.
+    final previous = _syncTail;
+    return _syncTail = previous == null
+        ? apply()
+        : previous.then((_) => apply());
   }
 
+  /// 예외를 던지지 않는다 — 던지면 뒤에 줄 선 맞추기가 모두 같은 예외로 끝난다.
   static Future<void> _applyIfReady(List<DoseSlot> plan) async {
-    final ready = _initFuture;
-    if (ready == null) return;
-    await ready;
-    if (!_initialized) return;
     try {
+      final ready = _initFuture;
+      if (ready == null) return;
+      await ready;
+      if (!_initialized) return;
+      // 걸어 둔 것만 지운다. 이미 울려서 알림창에 떠 있는 알림은 남긴다.
       await _plugin.cancelAllPendingNotifications();
-      for (final slot in plan) {
-        final daily = slot.weekday == 0;
+    } catch (e, st) {
+      // 못 지웠으면 새로 걸지 않는다 — 옛 알림과 겹쳐 두 번 울린다.
+      debugPrint('[NotificationService.syncAll] failed: $e\n$st');
+      return;
+    }
+    for (final slot in plan) {
+      final daily = slot.weekday == 0;
+      try {
         await _plugin.zonedSchedule(
           id: slot.id,
           title: '약먹자 💊',
@@ -196,39 +230,84 @@ class NotificationService {
               ? DateTimeComponents.time
               : DateTimeComponents.dayOfWeekAndTime,
         );
+      } catch (e, st) {
+        // 한 시각이 실패해도 나머지 시각은 건다.
+        debugPrint(
+          '[NotificationService.syncAll] slot ${slot.id} failed: $e\n$st',
+        );
       }
-    } catch (e, st) {
-      debugPrint('[NotificationService.syncAll] failed: $e\n$st');
     }
   }
 
   /// 다음 해당 ISO 요일(1=월 … 7=일)의 지정 시:분 (현재 이후).
-  static tz.TZDateTime _nextDateTimeOnWeekday(int isoWeekday, int hour, int minute) {
-    var scheduled = _nextDateTime(hour, minute);
-    // _nextDateTime 은 오늘/내일의 시:분만 맞춤 — 요일까지 전진.
-    while (scheduled.weekday != isoWeekday) {
-      scheduled = scheduled.add(const Duration(days: 1));
-    }
-    return scheduled;
+  static tz.TZDateTime _nextDateTimeOnWeekday(
+    int isoWeekday,
+    int hour,
+    int minute, [
+    tz.TZDateTime? at,
+  ]) {
+    // _nextDateTime 은 오늘/내일의 시:분만 맞춤 — 요일까지 달력 날짜로 전진.
+    final first = _nextDateTime(hour, minute, at);
+    final daysAhead = (isoWeekday - first.weekday) % 7;
+    return tz.TZDateTime(
+      tz.local,
+      first.year,
+      first.month,
+      first.day + daysAhead,
+      hour,
+      minute,
+    );
   }
 
-  static tz.TZDateTime _nextDateTime(int hour, int minute) {
-    final now = tz.TZDateTime.now(tz.local);
-    var scheduled = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
-    if (scheduled.isBefore(now)) {
-      scheduled = scheduled.add(const Duration(days: 1));
-    }
-    return scheduled;
+  static tz.TZDateTime _nextDateTime(
+    int hour,
+    int minute, [
+    tz.TZDateTime? at,
+  ]) {
+    final now = at ?? tz.TZDateTime.now(tz.local);
+    final today = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      hour,
+      minute,
+    );
+    if (!today.isBefore(now)) return today;
+    // 「24시간 뒤」가 아니라 달력으로 다음 날 — 서머타임이 바뀌는 날에도 시:분이 그대로다.
+    return tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day + 1,
+      hour,
+      minute,
+    );
   }
 
   // 테스트 전용 접근자 — 순수 계산 로직(다음 알림 시각)을 단위 테스트로 검증.
   // 동작/디자인 변경 없음(기존 private 로직을 그대로 위임).
   @visibleForTesting
-  static tz.TZDateTime nextDateTimeForTest(int hour, int minute) =>
-      _nextDateTime(hour, minute);
+  static tz.TZDateTime nextDateTimeForTest(
+    int hour,
+    int minute, {
+    tz.TZDateTime? now,
+  }) => _nextDateTime(hour, minute, now);
 
   @visibleForTesting
   static tz.TZDateTime nextDateTimeOnWeekdayForTest(
-          int isoWeekday, int hour, int minute) =>
-      _nextDateTimeOnWeekday(isoWeekday, hour, minute);
+    int isoWeekday,
+    int hour,
+    int minute, {
+    tz.TZDateTime? now,
+  }) => _nextDateTimeOnWeekday(isoWeekday, hour, minute, now);
+
+  /// 시험마다 처음 상태(알림 준비 전)에서 시작하게 한다.
+  @visibleForTesting
+  static void resetForTest() {
+    _initialized = false;
+    _initFuture = null;
+    _syncTail = null;
+    _syncGeneration = 0;
+  }
 }
