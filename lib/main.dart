@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 
 import 'config.dart';
@@ -198,6 +199,10 @@ class YakmukjaApp extends StatelessWidget {
       title: '약먹자',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
+      // 한국어 앱이다 — 붙여넣기 같은 기본 문구와 화면 읽기 안내를 한국어로 낸다.
+      // (T-261110-025)
+      supportedLocales: const [Locale('ko')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       home: const SplashScreen(),
     );
   }
