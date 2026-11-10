@@ -210,6 +210,35 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
   // 12시간제 시 표시: 12, 1, 2, 3 ... 11
   static const _hourLabels = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 
+  // 자주 쓰는 복용 시간 — 휠을 돌리지 않고 한 번 눌러 넣는다. (T-261110-032)
+  static const _quickTimes = [
+    (label: '아침', hour: 8, minute: 0),
+    (label: '점심', hour: 12, minute: 30),
+    (label: '저녁', hour: 19, minute: 0),
+    (label: '자기 전', hour: 22, minute: 0),
+  ];
+
+  bool _hasTime(int hour, int minute) =>
+      _times.any((t) => t.hour == hour && t.minute == minute);
+
+  /// 「8:00」「12:30」「7:00」 — 12시간제 시:분.
+  static String _clockText(int hour, int minute) {
+    final h = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+    return '$h:${minute.toString().padLeft(2, '0')}';
+  }
+
+  /// 복용 시간을 넣고 시간순으로 정렬한다. 이미 있는 시간이면 넣지 않고 false.
+  bool _addTime(int hour, int minute) {
+    if (_hasTime(hour, minute)) return false;
+    setState(() {
+      _times.add(DoseTime(hour: hour, minute: minute));
+      _times.sort(
+        (a, b) => (a.hour * 60 + a.minute).compareTo(b.hour * 60 + b.minute),
+      );
+    });
+    return true;
+  }
+
   void _showTimePicker() {
     int amPmIndex = 0; // 0=오전, 1=오후
     int hourIndex = 9; // 기본 오전 9시 (_hourLabels[9] = 9)
@@ -265,25 +294,13 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                             h = displayHour == 12 ? 12 : displayHour + 12;
                           }
                           final min = minuteIndex * 5;
-                          final duplicate = _times.any(
-                            (t) => t.hour == h && t.minute == min,
-                          );
-                          if (duplicate) {
-                            Navigator.pop(ctx);
+                          final added = _addTime(h, min);
+                          Navigator.pop(ctx);
+                          if (!added) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('이미 등록된 시간입니다.')),
                             );
-                            return;
                           }
-                          setState(() {
-                            _times.add(DoseTime(hour: h, minute: min));
-                            _times.sort(
-                              (a, b) => (a.hour * 60 + a.minute).compareTo(
-                                b.hour * 60 + b.minute,
-                              ),
-                            );
-                          });
-                          Navigator.pop(ctx);
                         },
                         child: Text(
                           '추가',
@@ -548,32 +565,58 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                             semanticsLabel: '복용 시간 추가',
                             onTap: _showTimePicker,
                           ),
-                          child: _times.isEmpty
-                              ? _EmptyPlaceholder(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (_times.isEmpty)
+                                _EmptyPlaceholder(
                                   text: '복용 시간 추가하기',
                                   onTap: _showTimePicker,
                                 )
-                              : Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                              else
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
                                   children: [
-                                    Wrap(
-                                      spacing: 8,
-                                      runSpacing: 8,
-                                      children: [
-                                        for (int i = 0; i < _times.length; i++)
-                                          _ValueChip(
-                                            label: _times[i].format(),
-                                            icon: Icons.schedule_rounded,
-                                            onDeleted: () => setState(
-                                              () => _times.removeAt(i),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 10),
-                                    const _AlarmNote(),
+                                    for (int i = 0; i < _times.length; i++)
+                                      _ValueChip(
+                                        label: _times[i].format(),
+                                        icon: Icons.schedule_rounded,
+                                        onDeleted: () =>
+                                            setState(() => _times.removeAt(i)),
+                                      ),
                                   ],
                                 ),
+                              // 아직 넣지 않은 자주 쓰는 시간. (T-261110-032)
+                              if (_quickTimes.any(
+                                (q) => !_hasTime(q.hour, q.minute),
+                              )) ...[
+                                const SizedBox(height: 10),
+                                Wrap(
+                                  key: const Key('quick-time-row'),
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: [
+                                    for (final q in _quickTimes)
+                                      if (!_hasTime(q.hour, q.minute))
+                                        _QuickTimeChip(
+                                          key: Key(
+                                            'quick-time-${q.hour}-${q.minute}',
+                                          ),
+                                          label:
+                                              '${q.label} ${_clockText(q.hour, q.minute)}',
+                                          onTap: () =>
+                                              _addTime(q.hour, q.minute),
+                                        ),
+                                  ],
+                                ),
+                              ],
+                              if (_times.isNotEmpty) ...[
+                                const SizedBox(height: 10),
+                                const _AlarmNote(),
+                              ],
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 10),
                         _SectionCard(
@@ -1071,6 +1114,58 @@ class _AddPillButton extends StatelessWidget {
                     '추가',
                     style: renewalStyle(
                       13,
+                      FontWeight.w700,
+                      RenewalColors.greenDeep,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 자주 쓰는 복용 시간을 한 번에 넣는 단추. 예: 「+ 아침 8:00」. (T-261110-032)
+class _QuickTimeChip extends StatelessWidget {
+  const _QuickTimeChip({super.key, required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      button: true,
+      label: '$label 추가',
+      onTap: onTap,
+      child: ExcludeSemantics(
+        child: Material(
+          color: Colors.white,
+          shape: const StadiumBorder(
+            side: BorderSide(color: RenewalColors.green, width: 1.2),
+          ),
+          child: InkWell(
+            onTap: onTap,
+            customBorder: const StadiumBorder(),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.add_rounded,
+                    size: 16,
+                    color: RenewalColors.greenDeep,
+                  ),
+                  const SizedBox(width: 2),
+                  Text(
+                    label,
+                    style: renewalStyle(
+                      14,
                       FontWeight.w700,
                       RenewalColors.greenDeep,
                     ),

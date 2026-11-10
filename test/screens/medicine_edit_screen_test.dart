@@ -28,6 +28,9 @@ void main() {
       );
 
       final monday = find.bySemanticsLabel('월요일 선택');
+      // 화면 아래쪽에 있어 가려져 있을 수 있다. 보이는 곳까지 올린 뒤 본다.
+      await tester.ensureVisible(monday);
+      await tester.pumpAndSettle();
 
       expect(
         tester.getSemantics(monday),
