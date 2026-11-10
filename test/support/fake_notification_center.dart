@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// 기기 알림 센터 흉내. 알림 플러그인 채널 호출을 받아
 /// 「지금 기기에 걸려 있는 알림」을 유지한다.
@@ -47,6 +48,13 @@ class FakeNotificationCenter {
   /// true 면 알림 권한 상태를 읽지 못한다.
   bool permissionReadFails = false;
 
+  /// initialize 에 넘긴 인자. iOS 카테고리 단추를 여기서 본다.
+  Map<String, Object?>? initializeArgs;
+
+  /// 단추로 앱이 켜진 척할 때 넣는다. null 이면 단추로 켜지지 않았다.
+  /// 키는 플러그인의 getNotificationAppLaunchDetails 응답과 같다.
+  Map<String, Object?>? launchResponse;
+
   late TargetPlatform _platform;
 
   /// 걸려 있는 알림을 이른 시각부터 「요일칸 HH:mm 본문」으로.
@@ -89,6 +97,8 @@ class FakeNotificationCenter {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
     _platform = platform;
     debugDefaultTargetPlatformOverride = platform;
+    // 다시 알림 목록은 SharedPreferences 에 있다. 시험마다 빈 목록에서 시작한다.
+    SharedPreferences.setMockInitialValues(<String, Object>{});
     if (platform == TargetPlatform.iOS) {
       IOSFlutterLocalNotificationsPlugin.registerWith();
     } else {
@@ -111,6 +121,20 @@ class FakeNotificationCenter {
       if (held != null) await held;
       final args = call.arguments;
       switch (call.method) {
+        case 'initialize':
+          if (args is Map) {
+            initializeArgs = Map<String, Object?>.from(args);
+          }
+          break;
+        case 'getNotificationAppLaunchDetails':
+          final response = launchResponse;
+          if (response == null) {
+            return <String, Object?>{'notificationLaunchedApp': false};
+          }
+          return <String, Object?>{
+            'notificationLaunchedApp': true,
+            'notificationResponse': response,
+          };
         case 'checkPermissions':
           if (permissionReadFails) {
             throw PlatformException(code: 'permission_read_failed');
@@ -145,12 +169,17 @@ class FakeNotificationCenter {
           final match = args['matchDateTimeComponents'];
           final daily = match == DateTimeComponents.time.index;
           final weekly = match == DateTimeComponents.dayOfWeekAndTime.index;
+          final specifics = args['platformSpecifics'];
           pending[id] = FakeAlarm(
             minuteOfDay: at.hour * 60 + at.minute,
             weekday: daily ? 0 : at.weekday,
             once: !daily && !weekly,
             at: !daily && !weekly ? at : null,
             body: args['body'] as String,
+            payload: args['payload'] as String? ?? '',
+            platformSpecifics: specifics is Map
+                ? Map<String, Object?>.from(specifics)
+                : null,
           );
         case 'cancelAllPendingNotifications':
           // 걸어 둔 알림만 지운다. 이미 뜬 알림은 남는다.
@@ -165,6 +194,28 @@ class FakeNotificationCenter {
       }
       return true;
     });
+  }
+
+  /// 떠 있는 앱에 알림 응답을 넣는다. 형식은 didReceiveNotificationResponse.
+  /// [notificationResponseType] 0 = 알림 본문, 1 = 단추.
+  Future<void> deliverResponse({
+    required int notificationResponseType,
+    String? actionId,
+    String? payload,
+    int id = 1,
+  }) async {
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    final data = const StandardMethodCodec().encodeMethodCall(
+      MethodCall('didReceiveNotificationResponse', <String, Object?>{
+        'notificationId': id,
+        'actionId': actionId,
+        'input': '',
+        'payload': payload ?? '',
+        'notificationResponseType': notificationResponseType,
+      }),
+    );
+    await messenger.handlePlatformMessage(_channel.name, data, (_) {});
   }
 
   void uninstall() {
@@ -184,6 +235,8 @@ class FakeAlarm {
     required this.body,
     this.once = false,
     this.at,
+    this.payload = '',
+    this.platformSpecifics,
   });
 
   final int minuteOfDay;
@@ -197,6 +250,12 @@ class FakeAlarm {
 
   /// 한 번만 울리는 알림이 울릴 날짜·시각.
   final DateTime? at;
+
+  /// 알림에 실어 보낸 payload. 약 시각은 `dose:HH:mm`.
+  final String payload;
+
+  /// 플랫폼별 알림 설정(단추·카테고리).
+  final Map<String, Object?>? platformSpecifics;
 
   @override
   String toString() {

@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:url_launcher/url_launcher.dart';
@@ -69,6 +72,18 @@ enum NotificationEnableResult {
 
 class NotificationService {
   static final _plugin = FlutterLocalNotificationsPlugin();
+
+  /// 알림 단추. 백그라운드에서 처리하지 않고, 누르면 앱이 열린 뒤 본 isolate 에서만
+  /// 처리한다. (T-261110-045)
+  static const _takeActionId = 'take';
+  static const _snoozeActionId = 'snooze10';
+  static const _doseCategoryId = 'dose_v1';
+  static const _snoozeIdBase = 800000;
+  static const _snoozeLead = Duration(minutes: 10);
+  static const _snoozePrefsKey = 'yakmukja.dose_snoozes';
+
+  /// 안드로이드 단추 request code 가 id × 16 이라 2^31 을 넘지 않게 한다.
+  static const _maxNotificationId = 1 << 27;
 
   /// 기기에서 이 앱의 알림이 켜져 있는지. null = 아직 모른다(알림 준비 전, 또는 한 번도
   /// 읽지 못함). 읽기에 실패하면 마지막으로 읽은 값을 그대로 둔다.
@@ -186,17 +201,20 @@ class NotificationService {
       const androidSettings = AndroidInitializationSettings(
         '@mipmap/ic_launcher',
       );
-      const iosSettings = DarwinInitializationSettings(
+      // 카테고리 단추는 factory 라 이 설정은 const 가 아니다. (T-261110-045)
+      final iosSettings = DarwinInitializationSettings(
         requestAlertPermission: true,
         requestBadgePermission: true,
         requestSoundPermission: true,
+        notificationCategories: [_doseCategory()],
       );
 
       await _plugin.initialize(
-        settings: const InitializationSettings(
+        settings: InitializationSettings(
           android: androidSettings,
           iOS: iosSettings,
         ),
+        onDidReceiveNotificationResponse: _onNotificationResponse,
       );
 
       // iOS 권한 요청
@@ -217,6 +235,15 @@ class NotificationService {
 
       await _readPermission();
       _initialized = true;
+      // 다시 알림 목록은 여기서 한 번만 읽는다. 맞추기 도중 다시 읽으면
+      // 위젯 시험의 가짜 시계가 그 퓨처를 못 깨운다. (T-261110-045)
+      await _loadSnoozes();
+      // 단추로 앱이 새로 켜진 경우는 콜백이 없다. initialize 다음에 한 번만 읽는다.
+      try {
+        await _consumeLaunchResponse();
+      } catch (e, st) {
+        debugPrint('[NotificationService.launch] failed: $e\n$st');
+      }
     } catch (e, st) {
       debugPrint('[NotificationService.init] failed: $e\n$st');
       _initialized = false;
@@ -231,13 +258,47 @@ class NotificationService {
       importance: Importance.high,
       priority: Priority.high,
       visibility: NotificationVisibility.private,
+      actions: <AndroidNotificationAction>[
+        AndroidNotificationAction(
+          _takeActionId,
+          '먹었어요',
+          showsUserInterface: true,
+        ),
+        AndroidNotificationAction(
+          _snoozeActionId,
+          '10분 뒤 다시',
+          showsUserInterface: true,
+        ),
+      ],
     ),
     iOS: DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
+      categoryIdentifier: _doseCategoryId,
     ),
   );
+
+  static DarwinNotificationCategory _doseCategory() {
+    return DarwinNotificationCategory(
+      _doseCategoryId,
+      actions: [
+        DarwinNotificationAction.plain(
+          _takeActionId,
+          '먹었어요',
+          options: const {DarwinNotificationActionOption.foreground},
+        ),
+        DarwinNotificationAction.plain(
+          _snoozeActionId,
+          '10분 뒤 다시',
+          options: const {DarwinNotificationActionOption.foreground},
+        ),
+      ],
+    );
+  }
+
+  static String _dosePayload(int hour, int minute) =>
+      'dose:${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
 
   /// 한 번 울리는 알림을 찾아볼 가장 먼 날(오늘부터). 요일 무늬는 7일마다 되풀이되고
   /// 걸 수 있는 건수에 상한이 있어, 이보다 먼 날은 볼 필요가 없다. (T-261110-042)
@@ -445,6 +506,7 @@ class NotificationService {
       return;
     }
     for (final slot in plan) {
+      assert(slot.id >= 0 && slot.id < _maxNotificationId);
       final date = slot.date;
       if (date != null) {
         // 끝나는 날이 있는 약 — 그 날짜에 한 번만 울린다. (T-261110-042)
@@ -463,6 +525,7 @@ class NotificationService {
             ),
             notificationDetails: _notificationDetails,
             androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+            payload: _dosePayload(slot.hour, slot.minute),
           );
         } catch (e, st) {
           // 한 건이 실패해도(그 사이 시각이 지났거나 기기가 거절) 나머지는 건다.
@@ -486,11 +549,28 @@ class NotificationService {
           matchDateTimeComponents: daily
               ? DateTimeComponents.time
               : DateTimeComponents.dayOfWeekAndTime,
+          payload: _dosePayload(slot.hour, slot.minute),
         );
       } catch (e, st) {
         // 한 시각이 실패해도 나머지 시각은 건다.
         debugPrint(
           '[NotificationService.syncAll] slot ${slot.id} failed: $e\n$st',
+        );
+      }
+    }
+    // 맞추기가 대기 알림을 모두 지운 뒤, 아직 안 지난 다시 알림만 다시 건다.
+    // 목록 읽기는 _init 에서 끝냈다. 여기서 새 저장소 퓨처를 기다리지 않는다.
+    if (!_snoozesReady) return;
+    final now = clock();
+    final before = _snoozes.length;
+    _snoozes.removeWhere((item) => !item.at.isAfter(now));
+    if (_snoozes.length != before) _persistSnoozes();
+    for (final item in List<_DoseSnooze>.of(_snoozes)) {
+      try {
+        await _scheduleSnooze(item);
+      } catch (e, st) {
+        debugPrint(
+          '[NotificationService.syncAll] snooze restore ${item.id} failed: $e\n$st',
         );
       }
     }
@@ -542,6 +622,176 @@ class NotificationService {
     );
   }
 
+  /// 앱이 떠 있을 때 알림 단추를 누르면 플러그인이 이 함수를 부른다.
+  /// 반환 퓨처를 플러그인이 기다리지 않으므로, 시험은 [settleForTest] 로 끝을 본다.
+  static void _onNotificationResponse(NotificationResponse response) {
+    _responseChain = _responseChain.then((_) async {
+      try {
+        await _handleResponse(response);
+      } catch (e, st) {
+        debugPrint('[NotificationService.response] failed: $e\n$st');
+      }
+    });
+  }
+
+  static Future<void> _responseChain = Future<void>.value();
+  static bool _launchHandled = false;
+  static SharedPreferences? _prefs;
+  static final List<_DoseSnooze> _snoozes = <_DoseSnooze>[];
+  static bool _snoozesReady = false;
+
+  /// 단추로 앱이 켜진 응답을 한 번만 처리한다. 플러그인은 이 값을 지우지 않는다.
+  static Future<void> _consumeLaunchResponse() async {
+    if (_launchHandled) return;
+    _launchHandled = true;
+    final details = await _plugin.getNotificationAppLaunchDetails();
+    if (details == null || !details.didNotificationLaunchApp) return;
+    final response = details.notificationResponse;
+    if (response == null) return;
+    await _handleResponse(response);
+  }
+
+  static Future<void> _handleResponse(NotificationResponse response) async {
+    if (response.notificationResponseType !=
+        NotificationResponseType.selectedNotificationAction) {
+      return;
+    }
+    final dose = _parseDosePayload(response.payload);
+    if (dose == null) return;
+    switch (response.actionId) {
+      case _takeActionId:
+        _markDoseTaken(dose.$1, dose.$2);
+      case _snoozeActionId:
+        await _snoozeDose(dose.$1, dose.$2);
+    }
+  }
+
+  /// `dose:HH:mm`. 시각이 아니면 null.
+  static (int, int)? _parseDosePayload(String? payload) {
+    if (payload == null) return null;
+    final match = RegExp(r'^dose:(\d{2}):(\d{2})$').firstMatch(payload);
+    if (match == null) return null;
+    final hour = int.parse(match.group(1)!);
+    final minute = int.parse(match.group(2)!);
+    if (hour > 23 || minute > 59) return null;
+    return (hour, minute);
+  }
+
+  /// 「먹었어요」. 오늘 그 시각의 안 먹은 약을 모두 먹음으로 남긴다.
+  /// 지금 시각이 그 약 시각보다 이르면 지난 날 알림이라 아무것도 하지 않는다.
+  static void _markDoseTaken(int hour, int minute) {
+    final now = clock();
+    // 지금이 약 시각보다 이르면 어제 알림이다. 오늘 기록으로 남기지 않는다.
+    if (now.hour * 60 + now.minute < hour * 60 + minute) return;
+    final medicines = _medicines?.call();
+    if (medicines == null) return;
+    final day = DateTime(now.year, now.month, now.day);
+    for (final medicine in medicines) {
+      if (medicine.deletedAt != null) continue;
+      if (!medicine.isActiveOn(day)) continue;
+      if (!medicine.isOnWeekday(now.weekday)) continue;
+      for (final time in medicine.times) {
+        if (time.hour != hour || time.minute != minute) continue;
+        medicine.markTakenOn(day, time);
+        break;
+      }
+    }
+  }
+
+  /// 「10분 뒤 다시」. 지금 + 10분에 1회 알림. id 는 800000 + 그 시각의 하루 중 분.
+  static Future<void> _snoozeDose(int hour, int minute) async {
+    final fireAt = clock().add(_snoozeLead);
+    final snooze = _DoseSnooze(
+      at: fireAt,
+      payload: _dosePayload(hour, minute),
+      body: _bodyForDose(hour, minute),
+    );
+    _snoozes.removeWhere((item) => item.id == snooze.id);
+    _snoozes.add(snooze);
+    _persistSnoozes();
+    try {
+      await _scheduleSnooze(snooze);
+    } catch (e, st) {
+      debugPrint('[NotificationService.snooze] schedule failed: $e\n$st');
+    }
+  }
+
+  /// 그 시각 알림과 같은 문구. 오늘 이미 울린 한 번 알림도 보게 자정부터 계획을 잡는다.
+  static String _bodyForDose(int hour, int minute) {
+    final medicines = _medicines?.call();
+    if (medicines == null) return '드실 약이 있어요.';
+    final now = clock();
+    final start = DateTime(now.year, now.month, now.day);
+    final List<DoseSlot> slots;
+    try {
+      slots = planSlots(medicines, now: start);
+    } catch (e, st) {
+      debugPrint('[NotificationService.snooze] body failed: $e\n$st');
+      return '드실 약이 있어요.';
+    }
+    for (final slot in slots) {
+      if (slot.hour != hour || slot.minute != minute) continue;
+      final day = slot.date;
+      if (day != null) {
+        final sameDay =
+            day.year == start.year &&
+            day.month == start.month &&
+            day.day == start.day;
+        if (!sameDay) continue;
+      } else if (slot.weekday != 0 && slot.weekday != now.weekday) {
+        continue;
+      }
+      return slot.body;
+    }
+    return '드실 약이 있어요.';
+  }
+
+  static Future<void> _scheduleSnooze(_DoseSnooze snooze) async {
+    final at = snooze.at;
+    assert(snooze.id >= 0 && snooze.id < _maxNotificationId);
+    await _plugin.zonedSchedule(
+      id: snooze.id,
+      title: '약먹자 💊',
+      body: snooze.body,
+      scheduledDate: tz.TZDateTime(
+        tz.local,
+        at.year,
+        at.month,
+        at.day,
+        at.hour,
+        at.minute,
+        at.second,
+      ),
+      notificationDetails: _notificationDetails,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      payload: snooze.payload,
+    );
+  }
+
+  /// 준비 때 한 번 읽는다. 실패하면 목록을 비우거나 덮어쓰지 않는다.
+  static Future<void> _loadSnoozes() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getStringList(_snoozePrefsKey) ?? const <String>[];
+      _prefs = prefs;
+      _snoozes
+        ..clear()
+        ..addAll([for (final item in raw) ?_DoseSnooze.decode(item)]);
+      _snoozesReady = true;
+    } catch (e, st) {
+      debugPrint('[NotificationService.snooze] read failed: $e\n$st');
+    }
+  }
+
+  /// 메모리 목록을 기기에 적는다. 캐시는 바로 바뀌고, 디스크 쓰기는 기다리지 않는다.
+  static void _persistSnoozes() {
+    final prefs = _prefs;
+    if (prefs == null) return;
+    prefs.setStringList(_snoozePrefsKey, [
+      for (final item in _snoozes) item.encode(),
+    ]);
+  }
+
   // 테스트 전용 접근자 — 순수 계산 로직(다음 알림 시각)을 단위 테스트로 검증.
   // 동작/디자인 변경 없음(기존 private 로직을 그대로 위임).
   @visibleForTesting
@@ -559,6 +809,10 @@ class NotificationService {
     tz.TZDateTime? now,
   }) => _nextDateTimeOnWeekday(isoWeekday, hour, minute, now);
 
+  /// 떠 있는 앱에서 받은 알림 단추 처리가 끝날 때까지 기다린다.
+  @visibleForTesting
+  static Future<void> settleForTest() => _responseChain;
+
   /// 시험마다 처음 상태(알림 준비 전)에서 시작하게 한다.
   @visibleForTesting
   static void resetForTest() {
@@ -571,5 +825,45 @@ class NotificationService {
     enabled.value = null;
     clock = DateTime.now;
     _lastSyncDay = null;
+    _responseChain = Future<void>.value();
+    _launchHandled = false;
+    _prefs = null;
+    _snoozes.clear();
+    _snoozesReady = false;
+  }
+}
+
+/// 「10분 뒤 다시」로 걸어 둔 1회 알림. 맞추기가 대기 알림을 지운 뒤 다시 건다.
+class _DoseSnooze {
+  _DoseSnooze({required this.at, required this.payload, required this.body});
+
+  final DateTime at;
+  final String payload;
+  final String body;
+
+  int get id => NotificationService._snoozeIdBase + at.hour * 60 + at.minute;
+
+  String encode() => jsonEncode({
+    'at': at.millisecondsSinceEpoch,
+    'payload': payload,
+    'body': body,
+  });
+
+  static _DoseSnooze? decode(String raw) {
+    try {
+      final map = jsonDecode(raw);
+      if (map is! Map) return null;
+      final at = map['at'];
+      final payload = map['payload'];
+      final body = map['body'];
+      if (at is! int || payload is! String || body is! String) return null;
+      return _DoseSnooze(
+        at: DateTime.fromMillisecondsSinceEpoch(at),
+        payload: payload,
+        body: body,
+      );
+    } catch (_) {
+      return null;
+    }
   }
 }
