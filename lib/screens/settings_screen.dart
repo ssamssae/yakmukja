@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/app_review_service.dart';
 import '../services/iap_service.dart';
 import '../widgets/renewal_page.dart';
+import 'history_screen.dart';
 import 'policy_screen.dart';
 import 'trash_screen.dart';
 
@@ -104,6 +105,11 @@ class SettingsScreen extends StatelessWidget {
               icon: Icons.chat_bubble_outline_rounded,
               label: '피드백 보내기',
               onTap: () => _sendFeedback(context),
+            ),
+            RenewalMenuRow(
+              icon: Icons.history_rounded,
+              label: '지난 기록',
+              onTap: () => _push(context, const HistoryScreen()),
             ),
             RenewalMenuRow(
               icon: Icons.delete_outline_rounded,

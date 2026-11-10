@@ -80,11 +80,14 @@ class Medicine extends HiveObject {
     return d.add(trashRetention).difference(DateTime.now());
   }
 
-  String _todayKey(DoseTime t) {
-    final now = DateTime.now();
-    final d = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-    return '${d}_${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+  /// 복용 기록 한 건의 키 — "yyyy-MM-dd_HH:mm". (T-261110-039)
+  static String recordKey(DateTime day, int hour, int minute) {
+    final d =
+        '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+    return '${d}_${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
   }
+
+  String _todayKey(DoseTime t) => recordKey(DateTime.now(), t.hour, t.minute);
 
   bool isTaken(DoseTime t) => takenRecords.contains(_todayKey(t));
 
