@@ -38,6 +38,12 @@ class Medicine extends HiveObject {
   @HiveField(7)
   List<int> weekdays;
 
+  /// 끝나는 날 — 이 날까지 먹는다(그날 포함). null = 계속 먹는 약.
+  /// 날짜만 본다(시각은 쓰지 않는다). 이 칸이 없던 옛 데이터는 null 로 읽힌다.
+  /// (T-261110-042)
+  @HiveField(8)
+  DateTime? endDate;
+
   Medicine({
     required this.name,
     required this.dosage,
@@ -47,6 +53,7 @@ class Medicine extends HiveObject {
     List<String>? takenRecords,
     this.deletedAt,
     List<int>? weekdays,
+    this.endDate,
   })  : takenRecords = takenRecords ?? [],
         weekdays = weekdays ?? const [1, 2, 3, 4, 5, 6, 7];
 
@@ -63,6 +70,15 @@ class Medicine extends HiveObject {
 
   /// 지정한 ISO 요일(1=월 … 7=일)에 복용하는 약인지.
   bool isOnWeekday(int isoWeekday) => activeWeekdays.contains(isoWeekday);
+
+  /// 그 날짜에 먹는 기간 안인가 — 끝나는 날(포함)을 넘기지 않았는가. 요일은 따로 본다.
+  /// (T-261110-042)
+  bool isActiveOn(DateTime day) {
+    final end = endDate;
+    if (end == null) return true;
+    final lastDay = DateTime(end.year, end.month, end.day);
+    return !DateTime(day.year, day.month, day.day).isAfter(lastDay);
+  }
 
   /// 요일 라벨 — 매일이면 "매일", 아니면 "월·수·금" 형태(월→일 순서).
   String get weekdayLabel {

@@ -15,6 +15,7 @@ void main() {
     List<String> taken = const [],
     List<int>? weekdays,
     DateTime? deletedAt,
+    DateTime? endDate,
   }) => Medicine(
     name: name,
     dosage: dosage,
@@ -24,6 +25,7 @@ void main() {
     takenRecords: [...taken],
     weekdays: weekdays,
     deletedAt: deletedAt,
+    endDate: endDate,
   );
 
   String line(HistoryDose dose) =>
@@ -156,6 +158,48 @@ void main() {
       DateTime(2026, 11, 4), // 수
       DateTime(2026, 11, 2), // 월
     ]);
+  });
+
+  test('끝나는 날까지는 예정이 있고 그 다음 날부터는 예정이 없다', () {
+    // 2026-11-08 은 일요일. 그날까지 먹고, 11-09(월)부터는 예정이 없다.
+    final history = buildDoseHistory([
+      medicine('항생제', endDate: DateTime(2026, 11, 8, 21, 30)),
+    ], today);
+
+    expect(
+      history.any(
+        (day) =>
+            day.date == DateTime(2026, 11, 9) &&
+            day.doses.any((dose) => dose.name == '항생제'),
+      ),
+      isFalse,
+    );
+    final sunday = history.firstWhere(
+      (day) => day.date == DateTime(2026, 11, 8),
+    );
+    expect(sunday.doses.map(line), ['8:00 항생제 X']);
+  });
+
+  test('끝나는 날 뒤에 표시해 둔 기록은 남고 예정은 없다', () {
+    final history = buildDoseHistory([
+      medicine(
+        '항생제',
+        endDate: DateTime(2026, 11, 8),
+        taken: ['2026-11-09_08:00'],
+      ),
+    ], today);
+
+    final monday = history.firstWhere(
+      (day) => day.date == DateTime(2026, 11, 9),
+    );
+    expect(monday.doses.map(line), ['8:00 항생제 O']);
+  });
+
+  test('끝나는 날을 정하지 않으면 어제 예정이 그대로 나온다', () {
+    final history = buildDoseHistory([medicine('혈압약')], today);
+
+    expect(history.first.doses.map(line), ['8:00 혈압약 X']);
+    expect(history.first.date, DateTime(2026, 11, 9));
   });
 
   test('휴지통 약은 나오지 않는다', () {

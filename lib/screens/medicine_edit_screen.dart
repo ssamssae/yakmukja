@@ -48,6 +48,9 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
   late List<DoseTime> _times;
   // 복용 요일 (ISO: 1=월 … 7=일). 기본 = 매일(전체 선택).
   late Set<int> _weekdays;
+
+  /// 끝나는 날. 날짜만 둔다(0시). null = 계속 먹는 약. (T-261110-042)
+  DateTime? _endDate;
   bool _isSaving = false;
 
   // 요일 칩 라벨 (월→일, ISO 1..7 순서)
@@ -66,6 +69,8 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
         : m.times.map((t) => DoseTime(hour: t.hour, minute: t.minute)).toList();
     // 신규 등록 기본 = 매일. 수정 시 기존 요일(마이그레이션 안전 게터) 사용.
     _weekdays = m == null ? {...Medicine.allWeekdays} : {...m.activeWeekdays};
+    final end = m?.endDate;
+    _endDate = end == null ? null : DateTime(end.year, end.month, end.day);
 
     if (m != null && m.dosage.isNotEmpty) {
       _dosage = m.dosage;
@@ -406,6 +411,49 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
     );
   }
 
+  String _endDateLabel(DateTime date) =>
+      '${date.year}년 ${date.month}월 ${date.day}일';
+
+  /// 고를 수 있는 첫날. 오늘은 기본이고, 이미 지난 끝나는 날이 있으면 그 날도 보인다.
+  DateTime _endDateFirstDay(DateTime today) {
+    var first = today;
+    final saved = widget.medicine?.endDate;
+    if (saved != null) {
+      final savedDay = DateTime(saved.year, saved.month, saved.day);
+      if (savedDay.isBefore(first)) first = savedDay;
+    }
+    final editing = _endDate;
+    if (editing != null && editing.isBefore(first)) first = editing;
+    return first;
+  }
+
+  Future<void> _pickEndDate() async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final first = _endDateFirstDay(today);
+    var last = DateTime(today.year + 10, 12, 31);
+    final editing = _endDate;
+    if (editing != null && editing.isAfter(last)) last = editing;
+    var initial = editing ?? today;
+    if (initial.isBefore(first)) initial = first;
+    if (initial.isAfter(last)) initial = last;
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: first,
+      lastDate: last,
+      locale: const Locale('ko'),
+      helpText: '끝나는 날',
+      cancelText: '취소',
+      confirmText: '선택',
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _endDate = DateTime(picked.year, picked.month, picked.day);
+    });
+  }
+
   Future<void> _save() async {
     if (_isSaving) return;
     if (!_formKey.currentState!.validate()) return;
@@ -424,6 +472,8 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
     }
 
     final weekdays = _weekdays.toList()..sort();
+    final end = _endDate;
+    final endDate = end == null ? null : DateTime(end.year, end.month, end.day);
 
     setState(() => _isSaving = true);
     try {
@@ -437,6 +487,7 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
           memo: _memoCtrl.text.trim(),
           createdAt: DateTime.now(),
           weekdays: weekdays,
+          endDate: endDate,
         );
         await box.add(medicine);
       } else {
@@ -445,7 +496,8 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
           ..dosage = _dosage ?? ''
           ..times = _times
           ..memo = _memoCtrl.text.trim()
-          ..weekdays = weekdays;
+          ..weekdays = weekdays
+          ..endDate = endDate;
         await existing.save();
       }
       // 저장이 끝난 뒤 기기 알림을 약 목록과 다시 맞춘다. 화면은 기다리지 않는다 —
@@ -690,6 +742,77 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                                     ),
                                   );
                                 },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        _SectionCard(
+                          title: '끝나는 날',
+                          hint: '(선택)',
+                          trailing: _endDate == null
+                              ? null
+                              : TextButton(
+                                  key: const Key('end-date-clear'),
+                                  onPressed: () =>
+                                      setState(() => _endDate = null),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: RenewalColors.greenDeep,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                    ),
+                                    minimumSize: Size.zero,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  child: const Text('지우기'),
+                                ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              InkWell(
+                                key: const Key('end-date-field'),
+                                onTap: _pickEndDate,
+                                borderRadius: BorderRadius.circular(12),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.event_rounded,
+                                        size: 18,
+                                        color: RenewalColors.green,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          _endDate == null
+                                              ? '정하지 않음'
+                                              : _endDateLabel(_endDate!),
+                                          style: renewalStyle(
+                                            15,
+                                            FontWeight.w700,
+                                            _endDate == null
+                                                ? RenewalColors.faint
+                                                : RenewalColors.ink,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                _endDate == null
+                                    ? '정하지 않으면 계속 먹는 약이에요.'
+                                    : '이 날까지 먹어요. 다음 날부터는 오늘 목록과 알림에서 빠져요.',
+                                style: renewalStyle(
+                                  12,
+                                  FontWeight.w600,
+                                  RenewalColors.faint,
+                                ),
                               ),
                             ],
                           ),

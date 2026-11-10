@@ -42,12 +42,14 @@ class HistoryDay {
 
 /// 어제부터 거꾸로 [days]일의 기록. 약이 없던 날은 건너뛴다. 오늘은 넣지 않는다.
 ///
-/// 그날의 예정은 지금 약 설정(요일·시간·등록일)으로 계산한다. 설정을 바꾸기 전의
-/// 예정은 남아 있지 않기 때문이다. 그래서:
+/// 그날의 예정은 지금 약 설정(요일·시간·등록일·끝나는 날)으로 계산한다. 설정을 바꾸기
+/// 전의 예정은 남아 있지 않기 때문이다. 그래서:
 /// - 그날 표시한 기록이 있으면 지금 설정과 달라도(시간·요일을 바꿨어도) 먹은 것으로 넣는다.
 /// - 예정에 없던 시각의 기록은 가장 가까운 남은 현재 시각과 짝짓고, 그 칸의
 ///   「기록 없음」을 뺀다. 시간을 옮긴 약을 두 줄로 세지 않기 위해서다.
 /// - 등록한 날의 이른 시각 제외는 그 짝짓기 다음에 적용한다.
+/// - 끝나는 날(포함) 뒤의 날짜에는 예정을 넣지 않는다. 그날 표시한 기록은 남긴다.
+///   (T-261110-042)
 /// 휴지통 약은 뺀다.
 List<HistoryDay> buildDoseHistory(
   Iterable<Medicine> medicines,
@@ -105,7 +107,9 @@ List<HistoryDose> _dosesOn(Medicine medicine, DateTime date) {
   final createdDay = DateTime(created.year, created.month, created.day);
   final createdMinute = created.hour * 60 + created.minute;
   final current = <int>{
-    if (!date.isBefore(createdDay) && medicine.isOnWeekday(date.weekday))
+    if (!date.isBefore(createdDay) &&
+        medicine.isOnWeekday(date.weekday) &&
+        medicine.isActiveOn(date))
       for (final time in medicine.times) time.hour * 60 + time.minute,
   };
 
