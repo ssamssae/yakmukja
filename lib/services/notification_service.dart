@@ -3,6 +3,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/medicine.dart';
 
@@ -31,8 +32,28 @@ class DoseSlot {
   String get body => count == 1 ? '드실 약이 있어요.' : '드실 약이 $count개 있어요.';
 }
 
+/// 「알림 켜기」를 눌렀을 때의 결과. (T-261110-026)
+enum NotificationEnableResult {
+  /// 권한을 받았다. 알림이 켜졌다.
+  granted,
+
+  /// 앱에서는 더 물을 수 없어 기기의 앱 설정 화면을 열었다(iOS).
+  openedSettings,
+
+  /// 앱에서 켤 수 없다. 기기 설정에서 직접 켜야 한다.
+  needsManual,
+}
+
 class NotificationService {
   static final _plugin = FlutterLocalNotificationsPlugin();
+
+  /// 기기에서 이 앱의 알림이 켜져 있는지. null = 아직 모른다(알림 준비 전, 또는 한 번도
+  /// 읽지 못함). 읽기에 실패하면 마지막으로 읽은 값을 그대로 둔다.
+  /// 꺼져 있으면 홈이 안내를 띄운다. (T-261110-026)
+  static final ValueNotifier<bool?> enabled = ValueNotifier<bool?>(null);
+
+  /// 앱을 켤 때 받은 약 목록. 알림이 켜진 것을 알게 되면 이걸로 다시 맞춘다.
+  static Iterable<Medicine> Function()? _medicines;
   static bool _initialized = false;
 
   static Future<void>? _initFuture;
@@ -49,8 +70,88 @@ class NotificationService {
   static Future<void> initAndSync(
     Iterable<Medicine> Function() medicines,
   ) async {
+    _medicines = medicines;
     await init();
     await syncAll(medicines());
+  }
+
+  /// 기기 설정의 알림 권한을 다시 읽는다. 앱이 다시 앞으로 올 때 부른다.
+  /// 꺼져 있다가 켜진 것을 알게 되면 약 목록대로 알림을 다시 건다 —
+  /// iOS 는 권한이 없는 동안 예약 자체가 실패하기 때문이다. (T-261110-026)
+  static Future<void> refreshPermission() async {
+    // 알림 준비를 한 적이 없거나(스토어 화면 캡처 모드) 실패했으면 권한 상태를 말하지
+    // 않는다 — 알림을 걸 수 없는 채로 「꺼짐→켜짐」을 말하면 화면만 괜찮다고 한다.
+    final ready = _initFuture;
+    if (ready == null) return;
+    await ready;
+    if (!_initialized) return;
+    final before = enabled.value;
+    await _readPermission();
+    // 켜져 있는 것을 새로 알게 됐다(꺼짐→켜짐, 모름→켜짐).
+    if (before != true && enabled.value == true) {
+      final medicines = _medicines;
+      if (medicines != null) await syncAll(medicines());
+    }
+  }
+
+  static Future<void> _readPermission() async {
+    try {
+      final ios = _plugin
+          .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin
+          >();
+      if (ios != null) {
+        enabled.value = (await ios.checkPermissions())?.isEnabled;
+        return;
+      }
+      final android = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      if (android != null) {
+        enabled.value = await android.areNotificationsEnabled();
+      }
+    } catch (e, st) {
+      debugPrint('[NotificationService.permission] failed: $e\n$st');
+    }
+  }
+
+  static Future<NotificationEnableResult>? _enabling;
+
+  /// 「알림 켜기」: 권한을 다시 묻는다. 그래도 꺼져 있으면 iOS 는 이 앱의 설정 화면을
+  /// 연다(한 번 거절하면 앱에서 다시 물을 수 없다). (T-261110-026)
+  /// 답을 기다리는 동안 또 부르면 같은 요청의 결과를 돌려준다 — 권한 창이 떠 있을 때
+  /// 다시 물으면 기기가 거절해 「손으로 켜라」는 엉뚱한 안내가 나간다.
+  static Future<NotificationEnableResult> requestEnable() =>
+      _enabling ??= _requestEnable().whenComplete(() => _enabling = null);
+
+  static Future<NotificationEnableResult> _requestEnable() async {
+    try {
+      final ios = _plugin
+          .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin
+          >();
+      if (ios != null) {
+        await ios.requestPermissions(alert: true, badge: true, sound: true);
+        await refreshPermission();
+        if (enabled.value == true) return NotificationEnableResult.granted;
+        final opened = await launchUrl(Uri.parse('app-settings:'));
+        if (opened) return NotificationEnableResult.openedSettings;
+        return NotificationEnableResult.needsManual;
+      }
+      final android = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      if (android != null) {
+        await android.requestNotificationsPermission();
+        await refreshPermission();
+        if (enabled.value == true) return NotificationEnableResult.granted;
+      }
+    } catch (e, st) {
+      debugPrint('[NotificationService.requestEnable] failed: $e\n$st');
+    }
+    return NotificationEnableResult.needsManual;
   }
 
   static Future<void> _init() async {
@@ -91,6 +192,7 @@ class NotificationService {
       // Android 12+ 정확한 알람 권한 — 없으면 Doze 에서 지정시각이 지연됨
       await android?.requestExactAlarmsPermission();
 
+      await _readPermission();
       _initialized = true;
     } catch (e, st) {
       debugPrint('[NotificationService.init] failed: $e\n$st');
@@ -309,5 +411,8 @@ class NotificationService {
     _initFuture = null;
     _syncTail = null;
     _syncGeneration = 0;
+    _medicines = null;
+    _enabling = null;
+    enabled.value = null;
   }
 }

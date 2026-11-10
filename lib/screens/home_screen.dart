@@ -5,6 +5,8 @@ import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 
 import '../main.dart';
 import '../models/medicine.dart';
+import '../services/notification_service.dart';
+import '../theme/app_theme.dart';
 import '../theme/renewal_theme.dart';
 import '../widgets/pill_glyph.dart';
 import '../widgets/renewal_check.dart';
@@ -90,17 +92,49 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _lifecycle = AppLifecycleListener(
-      onResume: _refreshNow,
+      onResume: _onResume,
       onPause: () => _minuteTick?.cancel(),
     );
+    NotificationService.enabled.addListener(_onPermissionChanged);
     _armMinuteTick();
+  }
+
+  void _onPermissionChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
     _minuteTick?.cancel();
     _lifecycle.dispose();
+    NotificationService.enabled.removeListener(_onPermissionChanged);
     super.dispose();
+  }
+
+  void _onResume() {
+    _refreshNow();
+    // 기기 설정에서 알림을 켜거나 끄고 돌아왔을 수 있다. (T-261110-026)
+    unawaited(NotificationService.refreshPermission());
+  }
+
+  bool _enablingNotifications = false;
+
+  /// 「알림 켜기」 — 권한을 다시 묻고, 앱에서 켤 수 없으면 켜는 길을 알려 준다.
+  Future<void> _enableNotifications() async {
+    // 권한 창이 떠 있는 동안 또 눌렀다 — 안내가 두 번 나가지 않게 한다.
+    if (_enablingNotifications) return;
+    _enablingNotifications = true;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final result = await NotificationService.requestEnable();
+      if (result == NotificationEnableResult.needsManual) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('휴대폰 설정에서 약먹자 알림을 켜 주세요')),
+        );
+      }
+    } finally {
+      _enablingNotifications = false;
+    }
   }
 
   void _refreshNow() {
@@ -150,6 +184,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (i != nextIndex) entries[i],
               ];
               final takenCount = entries.where((entry) => entry.taken).length;
+              // 기기에서 알림이 꺼져 있는데 알려 줄 약이 있다. (T-261110-026)
+              final notificationsOff =
+                  NotificationService.enabled.value == false;
+              final warnNotificationsOff =
+                  notificationsOff && (entries.isNotEmpty || offDay.isNotEmpty);
               return ListView(
                 physics: entries.isEmpty && offDay.isEmpty
                     ? const NeverScrollableScrollPhysics()
@@ -167,6 +206,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     total: entries.length,
                     offDayOnly: entries.isEmpty && offDay.isNotEmpty,
                   ),
+                  if (warnNotificationsOff) ...[
+                    const SizedBox(height: 16),
+                    _NotificationOffCard(onEnable: _enableNotifications),
+                  ],
                   const SizedBox(height: 22),
                   if (entries.isEmpty && offDay.isEmpty)
                     const _EmptyState()
@@ -175,7 +218,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   else if (next == null)
                     const _AllDoneCard()
                   else
-                    _NowCard(entry: next, nowMinute: nowMinute),
+                    _NowCard(
+                      entry: next,
+                      nowMinute: nowMinute,
+                      notificationsOff: notificationsOff,
+                    ),
                   if (rest.isNotEmpty) ...[
                     const SizedBox(height: 30),
                     _RestHeader(count: rest.length),
@@ -391,10 +438,17 @@ class _ProgressBars extends StatelessWidget {
 }
 
 class _NowCard extends StatelessWidget {
-  const _NowCard({required this.entry, required this.nowMinute});
+  const _NowCard({
+    required this.entry,
+    required this.nowMinute,
+    this.notificationsOff = false,
+  });
 
   final _Entry entry;
   final int nowMinute;
+
+  /// 기기에서 알림이 꺼져 있다 — 알림 예고를 하지 않는다.
+  final bool notificationsOff;
 
   @override
   Widget build(BuildContext context) {
@@ -538,7 +592,8 @@ class _NowCard extends StatelessWidget {
                 onTap: () => medicine.toggleTaken(entry.time),
               ),
               // 알림 안내는 복용 시각 전에만 보인다. 시각이 지나면 「지금」 카드에 미래형 문구가 남지 않게 한다.
-              if (entry.minuteOfDay > nowMinute) ...[
+              // 기기에서 알림이 꺼져 있으면 지키지 못할 예고라 보이지 않는다. (T-261110-026)
+              if (entry.minuteOfDay > nowMinute && !notificationsOff) ...[
                 const SizedBox(height: 14),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1027,6 +1082,104 @@ class _OffDayRow extends StatelessWidget {
               Icons.chevron_right_rounded,
               size: 22,
               color: RenewalColors.hush,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 기기에서 알림이 꺼져 있을 때의 안내. 약 시간에 알려 주지 못하므로 눈에 띄게 둔다.
+/// 단추는 글 아래에 둔다 — 옆에 두면 좁은 화면·큰 글씨에서 글 칸이 좁아져
+/// 「…있어 / 요」처럼 꺾인다. (T-261110-026)
+class _NotificationOffCard extends StatelessWidget {
+  const _NotificationOffCard({required this.onEnable});
+
+  final VoidCallback onEnable;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      key: const Key('home-notification-off'),
+      decoration: renewalCardDecoration(),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFFEEEE),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.notifications_off_rounded,
+                    size: 22,
+                    color: AppColors.danger,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '알림이 꺼져 있어요',
+                        style: renewalStyle(
+                          16,
+                          FontWeight.w800,
+                          RenewalColors.ink,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '약 먹을 시간에 알려드리지 못해요',
+                        style: renewalStyle(
+                          13,
+                          FontWeight.w500,
+                          RenewalColors.faint,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Semantics(
+              container: true,
+              button: true,
+              label: '알림 켜기',
+              onTap: onEnable,
+              child: ExcludeSemantics(
+                child: Material(
+                  color: RenewalColors.green,
+                  borderRadius: BorderRadius.circular(999),
+                  child: InkWell(
+                    onTap: onEnable,
+                    borderRadius: BorderRadius.circular(999),
+                    // 누르기 쉬운 크기(높이 48 이상)를 지킨다.
+                    child: Container(
+                      constraints: const BoxConstraints(minHeight: 48),
+                      alignment: Alignment.center,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Text(
+                        '알림 켜기',
+                        textAlign: TextAlign.center,
+                        style: renewalStyle(15, FontWeight.w700, Colors.white),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ],
         ),

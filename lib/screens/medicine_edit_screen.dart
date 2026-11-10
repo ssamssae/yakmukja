@@ -516,26 +516,7 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                                       ],
                                     ),
                                     const SizedBox(height: 10),
-                                    Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.notifications_none_rounded,
-                                          size: 16,
-                                          color: RenewalColors.faint,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Expanded(
-                                          child: Text(
-                                            '설정된 시간에 푸시 알림이 발송됩니다',
-                                            style: renewalStyle(
-                                              12,
-                                              FontWeight.w600,
-                                              RenewalColors.faint,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                    const _AlarmNote(),
                                   ],
                                 ),
                         ),
@@ -590,17 +571,27 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
                                 },
                               ),
                               const SizedBox(height: 8),
-                              Text(
-                                _weekdays.length == 7
-                                    ? '매일 알림을 받아요'
-                                    : _weekdays.isEmpty
-                                    ? '요일을 1개 이상 선택해 주세요'
-                                    : '선택한 요일에만 알림을 받아요',
-                                style: renewalStyle(
-                                  12,
-                                  FontWeight.w600,
-                                  RenewalColors.faint,
-                                ),
+                              // 알림이 꺼져 있으면 알림을 받는다고 말하지 않는다.
+                              // (T-261110-026)
+                              ValueListenableBuilder<bool?>(
+                                valueListenable: NotificationService.enabled,
+                                builder: (context, enabled, _) {
+                                  final off = enabled == false;
+                                  return Text(
+                                    _weekdays.isEmpty
+                                        ? '요일을 1개 이상 선택해 주세요'
+                                        : _weekdays.length == 7
+                                        ? (off ? '매일 먹는 약이에요' : '매일 알림을 받아요')
+                                        : (off
+                                              ? '선택한 요일에만 먹는 약이에요'
+                                              : '선택한 요일에만 알림을 받아요'),
+                                    style: renewalStyle(
+                                      12,
+                                      FontWeight.w600,
+                                      RenewalColors.faint,
+                                    ),
+                                  );
+                                },
                               ),
                             ],
                           ),
@@ -1157,6 +1148,41 @@ class _Blob extends StatelessWidget {
           colors: [color.withValues(alpha: 0.85), color.withValues(alpha: 0)],
         ),
       ),
+    );
+  }
+}
+
+/// 복용 시간 아래 알림 안내. 기기에서 알림이 꺼져 있으면 발송된다고 말하지 않는다.
+/// (T-261110-026)
+class _AlarmNote extends StatelessWidget {
+  const _AlarmNote();
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool?>(
+      valueListenable: NotificationService.enabled,
+      builder: (context, enabled, _) {
+        final off = enabled == false;
+        final color = off ? AppColors.danger : RenewalColors.faint;
+        return Row(
+          children: [
+            Icon(
+              off
+                  ? Icons.notifications_off_outlined
+                  : Icons.notifications_none_rounded,
+              size: 16,
+              color: color,
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                off ? '알림이 꺼져 있어요. 홈에서 알림을 켜 주세요' : '설정된 시간에 푸시 알림이 발송됩니다',
+                style: renewalStyle(12, FontWeight.w600, color),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
