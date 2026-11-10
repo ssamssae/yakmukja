@@ -1,13 +1,9 @@
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hive_ce/hive.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
-import 'package:yakmukja/models/medicine.dart';
 import 'package:yakmukja/services/notification_service.dart';
 
-// 복약 알림 순수 계산 로직: 다음 알림 시각(_nextDateTime), 알림 id(_notificationId).
+// 복약 알림 순수 계산 로직: 다음 알림 시각(_nextDateTime). 알림 계획은 notification_plan_test.dart.
 // @visibleForTesting 접근자로 검증(플러그인 미가용 환경에서도 동작 — tz 만 필요).
 
 void main() {
@@ -40,80 +36,6 @@ void main() {
       expect(r.isBefore(now), isFalse);
       expect(r.hour, past.hour);
       expect(r.minute, past.minute);
-    });
-  });
-
-  group('notificationId — 다중 복용시간 id 산출', () {
-    late Directory tmp;
-
-    setUp(() async {
-      tmp = await Directory.systemTemp.createTemp('yakmukja_notif_test');
-      Hive.init(tmp.path);
-      if (!Hive.isAdapterRegistered(0)) Hive.registerAdapter(MedicineAdapter());
-      if (!Hive.isAdapterRegistered(1)) Hive.registerAdapter(DoseTimeAdapter());
-    });
-
-    tearDown(() async {
-      await Hive.close();
-      if (tmp.existsSync()) tmp.deleteSync(recursive: true);
-    });
-
-    test('박스 저장(key=int) 시 key*1000+timeIndex*10+요일슬롯, 시간마다 고유', () async {
-      final box = await Hive.openBox<Medicine>('meds');
-      final m = Medicine(
-        name: 'A',
-        dosage: '1',
-        times: [
-          DoseTime(hour: 8, minute: 0),
-          DoseTime(hour: 13, minute: 0),
-          DoseTime(hour: 20, minute: 0),
-        ],
-        memo: '',
-        createdAt: DateTime(2026, 1, 1),
-      );
-      await box.add(m);
-      final key = m.key as int;
-
-      // 매일 슬롯(0) — 시간마다 고유.
-      final dailyIds = [
-        NotificationService.notificationIdForTest(m, 0),
-        NotificationService.notificationIdForTest(m, 1),
-        NotificationService.notificationIdForTest(m, 2),
-      ];
-      expect(dailyIds, [key * 1000 + 0, key * 1000 + 10, key * 1000 + 20]);
-      expect(dailyIds.toSet().length, 3, reason: '복용시간마다 id 가 고유해야 함');
-    });
-
-    test('(시간 × 요일) 조합마다 id 가 모두 고유', () async {
-      final box = await Hive.openBox<Medicine>('meds');
-      final m = Medicine(
-        name: 'A',
-        dosage: '1',
-        times: [DoseTime(hour: 8, minute: 0), DoseTime(hour: 20, minute: 0)],
-        memo: '',
-        createdAt: DateTime(2026, 1, 1),
-      );
-      await box.add(m);
-
-      final ids = <int>{};
-      for (int i = 0; i < 2; i++) {
-        for (int wd = 0; wd <= 7; wd++) {
-          ids.add(NotificationService.notificationIdForTest(m, i, wd)!);
-        }
-      }
-      // 2 시간 × 8 슬롯(0=매일, 1..7=요일) = 16개, 전부 고유.
-      expect(ids.length, 16);
-    });
-
-    test('박스 저장 전(key=null)이면 null 반환해 스케줄 생략', () {
-      final m = Medicine(
-        name: 'A',
-        dosage: '1',
-        times: [DoseTime(hour: 8, minute: 0)],
-        memo: '',
-        createdAt: DateTime(2026, 1, 1),
-      );
-      expect(NotificationService.notificationIdForTest(m, 0), isNull);
     });
   });
 

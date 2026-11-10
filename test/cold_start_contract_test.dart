@@ -19,6 +19,15 @@ void main() {
     },
   );
 
+  test('startup re-syncs device alarms with the medicine list', () {
+    final source = File('lib/main.dart').readAsStringSync();
+
+    // 앱을 켤 때 알림 준비만 하고 「다시 맞추기」를 빼면, 빠졌거나 기기에서 사라진
+    // 예약이 스스로 복구되지 않는다. (T-261110-023)
+    expect(source, contains('NotificationService.initAndSync('));
+    expect(source, isNot(contains('NotificationService.init,')));
+  });
+
   test('banner ad loading initializes ads lazily after the first frame', () {
     final source = File('lib/services/ads_service.dart').readAsStringSync();
 

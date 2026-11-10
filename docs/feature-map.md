@@ -8,6 +8,7 @@ T-260926-017 · 2026-09-26 KST · mac:codex
 - 검증: `tool/flutter.sh test test/screens/medicine_alarm_edit_test.dart test/services/notification_service_test.dart`에서 Android/iOS 채널 모형의 실제 위젯 조작·예약 집합·Hive 재조회 확인. 수정 전에는 삭제한 예약 id 10이 남는 실패를 재현했다.
 - 근거: `/Users/user/reports/T-260926-017/life/yakmukja-repro.txt`, `yakmukja-alarm-final.txt`.
 - 미확인: 실기기 OS 알림 수신, 이미 구버전에서 고아가 된 알림의 자동 복구, 스토어 배포. Android 출시 보류 유지. 유료 주문·외부 발신 없음.
+- 2026-11-10 갱신(T-261110-023): 알림은 약마다 걸지 않고 시각별 1건으로 묶어 다시 맞추는 방식으로 바뀌었다. 구버전이 남긴 알림도 앱을 켤 때 지워지고 다시 걸린다 → 아래 「알림 묶기·다시 맞추기」 절.
 
 ## 시작화면 로고 — T-260928-006
 
@@ -38,3 +39,13 @@ T-260926-017 · 2026-09-26 KST · mac:codex
 - 기대 결과: ① 오늘 먹는 약 아래에 「오늘 쉬는 약 N」 목록이 나오고, 줄마다 약 이름과 「요일 · 시간」이 보인다. 오늘 먹는 약이 하나도 없으면 머리말이 「오늘은 먹을 약이 없어요」, 카드가 「오늘은 쉬는 날이에요」가 된다(등록 안내는 약이 0개일 때만 나온다). ② 그 약의 「약 수정」 화면이 열린다. 휴지통 약은 목록에 나오지 않는다.
 - 검증: `tool/flutter.sh test test/screens/home_screen_off_day_test.dart` — 5개. 수정 전 3개 실패(「아직 등록된 약이 없어요」 표시·목록 없음) → 수정 후 통과. 보호용 2개는 일부러 고장 내어(머리말 항상 표시 / 휴지통 거르기 제거) 실패를 확인했다. 전체 89개 통과, `analyze` No issues. 화면 그림(390×844)으로 배치를 확인했다.
 - 미확인: 실기기 화면.
+
+## 알림 묶기·다시 맞추기 — T-261110-023
+
+2026-11-10 KST · mac:claude
+
+- 사전 조건: 알림 권한 허용. 같은 시각에 먹는 약이 2개 이상이면 묶임을 볼 수 있다.
+- 진입점: ① 앱 실행(시작 직후) ② 약 등록·수정 → 저장 ③ 약 수정 → 삭제 ④ 설정 → 휴지통 → 복원.
+- 기대 결과: 네 경우 모두 기기에 걸린 알림이 지금 약 목록과 같아진다. 같은 시각 약은 알림 1건이다. 본문은 약 1개면 「드실 약이 있어요.」, 여러 개면 「드실 약이 N개 있어요.」(약 이름은 넣지 않는다). 요일 약은 그 요일에만 걸린다. 휴지통 약은 걸리지 않는다. 구버전이 약마다 걸어 둔 알림은 사라진다. 저장·삭제·복원 화면은 알림 맞추기를 기다리지 않고 닫힌다.
+- 검증: `tool/flutter.sh test test/services/notification_plan_test.dart test/services/notification_sync_test.dart test/screens/medicine_alarm_edit_test.dart test/screens/trash_restore_alarm_test.dart test/cold_start_contract_test.dart` — 알림 채널 모형(`test/support/fake_notification_center.dart`)으로 Android·iOS 예약 집합을 확인. 수정 전(빈 껍데기) 계획 7개·맞추기 7개·화면 시험 실패 → 수정 후 통과. 변이 확인: 준비 전 예약 / 옛 알림 안 지움 / 저장·복원 뒤 맞추기 빠짐 / 시작 때 맞추기 빠짐 → 각각 실패.
+- 미확인: 실기기 OS 알림 수신(묶인 알림 1건이 실제로 오는지), 구버전에서 올린 실기기의 옛 알림 정리.

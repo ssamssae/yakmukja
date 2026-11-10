@@ -98,13 +98,20 @@ void _startDeferredColdStartWork() {
           }
         }
       });
+      if (!kScreenshotMode) {
+        // 알림을 준비하고, 기기에 걸린 알림을 약 목록과 다시 맞춘다. 결제 준비보다
+        // 먼저 한다 — 스토어 연결이 느려도 알림은 바로 맞춰져야 한다. (T-261110-023)
+        // 스토어 스크린샷 캡처 때는 알림권한 다이얼로그가 뜨지 않게 건너뛴다.
+        await _runDeferredStartupStep(
+          'NotificationService.initAndSync',
+          () => NotificationService.initAndSync(
+            () => Hive.box<Medicine>(medicineBoxName).values,
+          ),
+        );
+      }
       await _runDeferredStartupStep('IapService.init', IapService.init);
       if (!kScreenshotMode) {
-        // 스토어 스크린샷 캡처 시 알림권한 다이얼로그·광고 로드를 끈다.
-        await _runDeferredStartupStep(
-          'NotificationService.init',
-          NotificationService.init,
-        );
+        // 스토어 스크린샷 캡처 시 광고 로드를 끈다.
         await _runDeferredStartupStep('AdsService.init', AdsService.init);
       }
     }),
