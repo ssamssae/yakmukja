@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 
+import '../config.dart';
 import '../main.dart';
 import '../models/medicine.dart';
+import '../services/app_review_service.dart';
 import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 import '../theme/renewal_theme.dart';
@@ -80,6 +82,10 @@ const Duration takeAllTapGuard = Duration(seconds: 1);
 /// 「모두 먹었어요」 뒤의 되돌리기 안내가 떠 있는 시간. (T-261110-036)
 const Duration takeAllNoticeDuration = Duration(seconds: 6);
 
+/// 오늘 약을 다 먹은 뒤 평가를 부탁하기까지의 기다림 — 「다 먹었어요」 화면을 먼저
+/// 보게 한다. (T-261110-040)
+const Duration reviewAskDelay = Duration(milliseconds: 1200);
+
 /// 메인 시간대. 새벽 · 아침 · 오후 · 저녁.
 String homePeriodLabel(int hour) {
   if (hour < 6) return '새벽';
@@ -113,6 +119,16 @@ class _HomeScreenState extends State<HomeScreen> {
   late final AppLifecycleListener _lifecycle;
   Timer? _minuteTick;
 
+  // 평가 부탁 — 「먹었어요」를 눌러 오늘 약을 다 먹은 순간을 알아챈다. (T-261110-040)
+  late final Box<Medicine> _box;
+  late final Listenable _boxChanges;
+  int _lastTaken = 0;
+  int _lastTotal = 0;
+  Timer? _reviewTimer;
+  ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? _undoSnack;
+  bool _reviewInFlight = false;
+  int _reviewEpoch = 0;
+
   DateTime _now() => (widget.clock ?? DateTime.now)();
 
   @override
@@ -120,9 +136,16 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _lifecycle = AppLifecycleListener(
       onResume: _onResume,
-      onPause: () => _minuteTick?.cancel(),
+      onHide: _cancelReviewAsk,
+      onPause: () {
+        _minuteTick?.cancel();
+        _cancelReviewAsk();
+      },
     );
     NotificationService.enabled.addListener(_onPermissionChanged);
+    _box = Hive.box<Medicine>(medicineBoxName);
+    _boxChanges = _box.listenable()..addListener(_onDosesChanged);
+    _rememberDoseCounts();
     _armMinuteTick();
   }
 
@@ -134,9 +157,110 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _minuteTick?.cancel();
     _takeGuard?.cancel();
+
+    _reviewTimer?.cancel();
+    _boxChanges.removeListener(_onDosesChanged);
     _lifecycle.dispose();
     NotificationService.enabled.removeListener(_onPermissionChanged);
     super.dispose();
+  }
+
+  /// 오늘 먹을 약 개수와 먹은 개수를 기억해 둔다. 다음 변화와 견주는 기준이다.
+  void _rememberDoseCounts() {
+    final entries = _todayEntries(_box, _now());
+    _lastTotal = entries.length;
+    _lastTaken = entries.where((entry) => entry.taken).length;
+  }
+
+  /// 약 저장이 바뀔 때마다: 약 구성은 그대로인데 체크가 늘어 오늘 약을 다 먹은
+  /// 상태가 됐으면 잠시 뒤 평가를 부탁한다. 약을 지우거나 시간을 고쳐서 다 먹은
+  /// 상태가 된 것은 치지 않는다.
+  void _onDosesChanged() {
+    final beforeTotal = _lastTotal;
+    final beforeTaken = _lastTaken;
+    _rememberDoseCounts();
+    final allTaken = _lastTotal > 0 && _lastTaken == _lastTotal;
+    if (allTaken && _lastTotal == beforeTotal && _lastTaken > beforeTaken) {
+      _scheduleReviewAsk();
+    } else if (!allTaken) {
+      // 되돌렸다. 이미 스토어에 묻는 중이면 그것도 횟수에 넣지 않는다.
+      _cancelReviewAsk();
+    }
+  }
+
+  void _cancelReviewAsk() {
+    _reviewTimer?.cancel();
+    _reviewTimer = null;
+    // 이미 스토어에 묻는 중이거나 되돌리기 안내를 기다리는 부탁도 함께 버린다.
+    _reviewEpoch++;
+  }
+
+  void _scheduleReviewAsk() {
+    // 스토어 화면 캡처 때는 평가 창을 띄우지 않는다.
+    if (kScreenshotMode) return;
+    _reviewTimer?.cancel();
+    final epoch = _reviewEpoch;
+    _reviewTimer = Timer(reviewAskDelay, () {
+      if (epoch != _reviewEpoch) return;
+      _fireReviewAsk();
+    });
+  }
+
+  /// 1.2초가 지났거나, 되돌리기 안내가 내려간 뒤. 아직 부탁할 자리인지 다시 본다.
+  void _fireReviewAsk() {
+    _reviewTimer = null;
+    if (!mounted || _reviewInFlight) return;
+    final epoch = _reviewEpoch;
+    final undo = _undoSnack;
+    if (undo != null) {
+      // 「모두 먹었어요」 되돌리기가 남아 있다. 안내가 내려간 뒤에 다시 본다.
+      undo.closed.then((_) {
+        if (!mounted || epoch != _reviewEpoch) return;
+        _fireReviewAsk();
+      });
+      return;
+    }
+    if (!_reviewStillWanted()) return;
+    _reviewInFlight = true;
+    unawaited(() async {
+      try {
+        await AppReviewService.maybeAskForReview(
+          _box.values,
+          stillWanted: () => epoch == _reviewEpoch && _reviewStillWanted(),
+        );
+      } finally {
+        _reviewInFlight = false;
+      }
+    }());
+  }
+
+  /// 지금 이 자리에서 평가를 부탁해도 되는가.
+  /// 설정 탭은 같은 경로라 [ModalRoute.isCurrent] 가 참이다. IndexedStack 이
+  /// 감싼 [Visibility] 로 홈이 가려졌는지를 따로 본다.
+  bool _reviewStillWanted() {
+    if (!mounted || kScreenshotMode) return false;
+    final entries = _todayEntries(_box, _now());
+    if (entries.isEmpty || entries.any((entry) => !entry.taken)) return false;
+    if (!(ModalRoute.of(context)?.isCurrent ?? true)) return false;
+    if (!_isHomeShown()) return false;
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    if (lifecycle != null && lifecycle != AppLifecycleState.resumed) {
+      return false;
+    }
+    return true;
+  }
+
+  bool _isHomeShown() {
+    var shown = true;
+    context.visitAncestorElements((element) {
+      final ancestor = element.widget;
+      if (ancestor is Visibility && !ancestor.visible) {
+        shown = false;
+        return false;
+      }
+      return true;
+    });
+    return shown;
   }
 
   void _onResume() {
@@ -195,33 +319,38 @@ class _HomeScreenState extends State<HomeScreen> {
       marked.add(item);
     }
     if (marked.isEmpty) return;
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text('$when 약 ${marked.length}개를 먹었다고 표시했어요'),
-          // 단추가 있는 안내는 기본이 「계속 떠 있음」이다. 그대로 두면 다른 화면의
-          // 단추를 가리고 다른 안내도 막으므로 몇 초 뒤 내린다.
-          duration: takeAllNoticeDuration,
-          persist: accessible,
-          showCloseIcon: accessible,
-          action: SnackBarAction(
-            label: '되돌리기',
-            onPressed: () {
-              for (final item in marked) {
-                // 그 사이 지워진 약은 건드리지 않는다. 이미 되돌린 약도 그대로 둔다.
-                if (item.medicine.isInBox && item.taken) {
-                  item.medicine.toggleTaken(item.time);
-                }
+    messenger.hideCurrentSnackBar();
+    final shown = messenger.showSnackBar(
+      SnackBar(
+        content: Text('$when 약 ${marked.length}개를 먹었다고 표시했어요'),
+        // 단추가 있는 안내는 기본이 「계속 떠 있음」이다. 그대로 두면 다른 화면의
+        // 단추를 가리고 다른 안내도 막으므로 몇 초 뒤 내린다.
+        duration: takeAllNoticeDuration,
+        persist: accessible,
+        showCloseIcon: accessible,
+        action: SnackBarAction(
+          label: '되돌리기',
+          onPressed: () {
+            for (final item in marked) {
+              // 그 사이 지워진 약은 건드리지 않는다. 이미 되돌린 약도 그대로 둔다.
+              if (item.medicine.isInBox && item.taken) {
+                item.medicine.toggleTaken(item.time);
               }
-            },
-          ),
+            }
+          },
         ),
-      );
+      ),
+    );
+    _undoSnack = shown;
+    shown.closed.whenComplete(() {
+      if (identical(_undoSnack, shown)) _undoSnack = null;
+    });
   }
 
   void _refreshNow() {
     if (!mounted) return;
+    // 날짜가 넘어갔을 수 있다 — 오늘 기준으로 다시 잡는다. (T-261110-040)
+    _rememberDoseCounts();
     setState(() {});
     _armMinuteTick();
   }
