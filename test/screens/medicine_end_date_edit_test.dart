@@ -47,7 +47,11 @@ void main() {
     return box.values.single;
   }
 
-  Future<void> pumpEdit(WidgetTester tester, {Medicine? medicine}) async {
+  Future<void> pumpEdit(
+    WidgetTester tester, {
+    Medicine? medicine,
+    DateTime Function()? now,
+  }) async {
     tester.view.physicalSize = const Size(390, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -57,7 +61,7 @@ void main() {
         locale: const Locale('ko'),
         supportedLocales: const [Locale('ko')],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
-        home: MedicineEditScreen(medicine: medicine),
+        home: MedicineEditScreen(medicine: medicine, now: now),
       ),
     );
     await tester.pumpAndSettle();
@@ -76,10 +80,11 @@ void main() {
 
   testWidgets('날짜를 고르면 그날 0시로 저장한다', (tester) async {
     final medicine = await addMedicine();
-    await pumpEdit(tester, medicine: medicine);
+    // 오늘이 11월 말이어도 대상은 같은 달이다. 실제 시계에 기대지 않는다.
+    final today = DateTime(2026, 11, 10);
+    final target = DateTime(2026, 11, 15);
+    await pumpEdit(tester, medicine: medicine, now: () => today);
 
-    final today = DateTime.now();
-    final target = DateTime(today.year, today.month, today.day + 5);
     await tester.ensureVisible(find.byKey(const Key('end-date-field')));
     await tester.tap(find.byKey(const Key('end-date-field')));
     await tester.pumpAndSettle();
@@ -120,10 +125,10 @@ void main() {
   });
 
   testWidgets('이미 지난 끝나는 날도 보이게 두고 날짜만 저장한다', (tester) async {
-    final today = DateTime.now();
+    final today = DateTime(2026, 11, 10);
     final past = DateTime(today.year, today.month, today.day - 9, 15, 30);
     final medicine = await addMedicine(endDate: past);
-    await pumpEdit(tester, medicine: medicine);
+    await pumpEdit(tester, medicine: medicine, now: () => today);
 
     expect(
       find.text(labelOf(DateTime(past.year, past.month, past.day))),
@@ -152,5 +157,44 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(medicine.endDate, isNull);
+  });
+
+  testWidgets('월말에는 다음 달로 넘긴 뒤 그달 날짜를 0시로 저장한다', (tester) async {
+    final medicine = await addMedicine();
+    // 11월 28일의 달력에는 3일이 이번 달의 지난 날로 있다. 다음 달의 3일을 고른다.
+    final today = DateTime(2026, 11, 28);
+    final target = DateTime(2026, 12, 3);
+    await pumpEdit(tester, medicine: medicine, now: () => today);
+
+    await tester.ensureVisible(find.byKey(const Key('end-date-field')));
+    await tester.tap(find.byKey(const Key('end-date-field')));
+    await tester.pumpAndSettle();
+
+    // 주입한 오늘이 달력의 오늘이어야 한다. 실제 시계면 이 글이 없다.
+    final semantics = tester.ensureSemantics();
+    try {
+      expect(
+        find.bySemanticsLabel('28, 2026년 11월 28일 토요일, 오늘'),
+        findsOneWidget,
+      );
+    } finally {
+      semantics.dispose();
+    }
+    await tester.tap(find.byTooltip('다음 달'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('2026년 12월'), findsOneWidget);
+    await tester.tap(find.text('${target.day}'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('선택'));
+    await tester.pumpAndSettle();
+
+    expect(find.text(labelOf(target)), findsOneWidget);
+
+    await tester.ensureVisible(find.text('저장'));
+    await tester.tap(find.text('저장'));
+    await tester.pumpAndSettle();
+
+    expect(medicine.endDate, target);
   });
 }

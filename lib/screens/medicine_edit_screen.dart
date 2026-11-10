@@ -13,7 +13,12 @@ import '../widgets/pill_glyph.dart';
 
 class MedicineEditScreen extends StatefulWidget {
   final Medicine? medicine;
-  const MedicineEditScreen({super.key, this.medicine});
+
+  /// 달력의 오늘. 비우면 [DateTime.now].
+  /// 시험이 끝나는 날 달력을 고정된 날짜로 열 때 쓴다. (T-261110-042)
+  final DateTime Function()? now;
+
+  const MedicineEditScreen({super.key, this.medicine, this.now});
 
   bool get isEditing => medicine != null;
 
@@ -414,9 +419,16 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
   String _endDateLabel(DateTime date) =>
       '${date.year}년 ${date.month}월 ${date.day}일';
 
+  /// 달력이 보는 오늘. 시각은 버리고 날짜만 쓴다.
+  DateTime _today() {
+    final clock = widget.now ?? DateTime.now;
+    final now = clock();
+    return DateTime(now.year, now.month, now.day);
+  }
+
   /// 고를 수 있는 첫날. 오늘은 기본이고, 이미 지난 끝나는 날이 있으면 그 날도 보인다.
-  DateTime _endDateFirstDay(DateTime today) {
-    var first = today;
+  DateTime _endDateFirstDay() {
+    var first = _today();
     final saved = widget.medicine?.endDate;
     if (saved != null) {
       final savedDay = DateTime(saved.year, saved.month, saved.day);
@@ -428,9 +440,8 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
   }
 
   Future<void> _pickEndDate() async {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final first = _endDateFirstDay(today);
+    final today = _today();
+    final first = _endDateFirstDay();
     var last = DateTime(today.year + 10, 12, 31);
     final editing = _endDate;
     if (editing != null && editing.isAfter(last)) last = editing;
@@ -443,6 +454,7 @@ class _MedicineEditScreenState extends State<MedicineEditScreen> {
       initialDate: initial,
       firstDate: first,
       lastDate: last,
+      currentDate: today,
       locale: const Locale('ko'),
       helpText: '끝나는 날',
       cancelText: '취소',
