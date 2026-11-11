@@ -1,0 +1,8 @@
+• You can leave the dose empty, or pick 알, 캡슐, 포, 개, ml, 방울, or 회.
+• A memo also shows on the home 「다음 약」 card.
+• Add a time with 「아침 8:00」, 「점심 12:30」, 「저녁 7:00」, or 「자기 전 10:00」.
+• Later the card says 「지난 약」 and how long passed, such as 「2시간 지남」.
+• Same-time medicines use one button, such as 「아침 8:00 약 2개 모두 먹었어요」.
+• 「지난 기록」 shows the last 30 days.
+• After 「끝나는 날」, it leaves today's list and reminders the next day.
+• A reminder has 「먹었어요」 and 「10분 뒤 다시」.
