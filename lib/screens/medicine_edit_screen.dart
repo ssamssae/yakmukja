@@ -1077,23 +1077,35 @@ class _SectionCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text(
-                  title,
-                  style: renewalStyle(16, FontWeight.w800, RenewalColors.ink),
-                ),
-                if (hint != null) ...[
-                  const SizedBox(width: 6),
-                  Text(
-                    hint!,
-                    style: renewalStyle(
-                      13,
-                      FontWeight.w600,
-                      RenewalColors.faint,
-                    ),
+                // 제목과 흐린 말이 길면 다음 줄로 내려간다. (T-261111-042)
+                Flexible(
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 2,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(
+                        title,
+                        style: renewalStyle(
+                          16,
+                          FontWeight.w800,
+                          RenewalColors.ink,
+                        ),
+                      ),
+                      if (hint != null)
+                        Text(
+                          hint!,
+                          style: renewalStyle(
+                            13,
+                            FontWeight.w600,
+                            RenewalColors.faint,
+                          ),
+                        ),
+                    ],
                   ),
-                ],
-                const Spacer(),
+                ),
                 ?trailing,
               ],
             ),
@@ -1173,12 +1185,15 @@ class _WeekdayChip extends StatelessWidget {
                 border: selected ? null : Border.all(color: RenewalColors.ring),
               ),
               child: Center(
-                child: Text(
-                  label,
-                  style: renewalStyle(
-                    14,
-                    FontWeight.w800,
-                    selected ? Colors.white : RenewalColors.body,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    style: renewalStyle(
+                      14,
+                      FontWeight.w800,
+                      selected ? Colors.white : RenewalColors.body,
+                    ),
                   ),
                 ),
               ),
@@ -1288,24 +1303,35 @@ class _QuickTimeChip extends StatelessWidget {
             customBorder: const StadiumBorder(),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.add_rounded,
-                    size: 16,
-                    color: RenewalColors.greenDeep,
-                  ),
-                  const SizedBox(width: 2),
-                  Text(
-                    label,
-                    style: renewalStyle(
-                      14,
-                      FontWeight.w700,
-                      RenewalColors.greenDeep,
-                    ),
-                  ),
-                ],
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final maxText = (constraints.maxWidth - 18).clamp(
+                    0.0,
+                    double.infinity,
+                  );
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.add_rounded,
+                        size: 16,
+                        color: RenewalColors.greenDeep,
+                      ),
+                      const SizedBox(width: 2),
+                      ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: maxText),
+                        child: Text(
+                          label,
+                          style: renewalStyle(
+                            14,
+                            FontWeight.w700,
+                            RenewalColors.greenDeep,
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           ),
@@ -1331,17 +1357,20 @@ class _EmptyPlaceholder extends StatelessWidget {
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 6,
+            runSpacing: 4,
             children: [
               const Icon(
                 Icons.add_rounded,
                 size: 18,
                 color: RenewalColors.greenDeep,
               ),
-              const SizedBox(width: 6),
               Text(
                 text,
+                textAlign: TextAlign.center,
                 style: renewalStyle(
                   15,
                   FontWeight.w700,
@@ -1405,7 +1434,6 @@ class _SaveButton extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(RenewalRadius.button),
         child: Ink(
-          height: 60,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(RenewalRadius.button),
             gradient: const LinearGradient(
@@ -1421,25 +1449,31 @@ class _SaveButton extends StatelessWidget {
               ),
             ],
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (busy) ...[
-                const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.4,
-                    color: Colors.white,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 60),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (busy) ...[
+                  const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.4,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text(
+                    '저장',
+                    style: renewalStyle(18, FontWeight.w700, Colors.white),
                   ),
                 ),
-                const SizedBox(width: 8),
               ],
-              Text(
-                '저장',
-                style: renewalStyle(18, FontWeight.w700, Colors.white),
-              ),
-            ],
+            ),
           ),
         ),
       ),

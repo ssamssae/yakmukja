@@ -14,7 +14,9 @@ class RenewalDock extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(28, 0, 28, 10),
       child: Container(
-        height: 66,
+        // 글자가 커지면 칸이 함께 커진다. 보통 글자에서는 최소 66을 유지한다.
+        // (T-261111-042)
+        constraints: const BoxConstraints(minHeight: 66),
         padding: const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(
           color: RenewalColors.ink,
@@ -40,7 +42,7 @@ class RenewalDock extends StatelessWidget {
             GestureDetector(
               onTap: onTap == null ? null : () => onTap!(1),
               child: Container(
-                height: 46,
+                constraints: const BoxConstraints(minHeight: 46),
                 padding: const EdgeInsets.fromLTRB(14, 0, 18, 0),
                 decoration: BoxDecoration(
                   color: RenewalColors.green,
@@ -99,11 +101,13 @@ class _DockItem extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 24, color: color),
           const SizedBox(height: 3),
           Text(
             label,
+            textAlign: TextAlign.center,
             style: renewalStyle(11.5, FontWeight.w700, color, spacing: -0.2),
           ),
         ],
