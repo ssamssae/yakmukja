@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yakmukja/screens/medicine_edit_screen.dart';
+import 'package:yakmukja/screens/settings_screen.dart';
 import 'package:yakmukja/theme/app_theme.dart';
 import 'package:yakmukja/widgets/renewal_dock.dart';
 
@@ -183,6 +184,37 @@ void main() {
             expect(button.height, 60);
           } else {
             expect(button.height, greaterThanOrEqualTo(60));
+          }
+        });
+      }
+    }
+  });
+
+  group('설정 백업', () {
+    const labels = [
+      '약 목록 백업',
+      '백업에서 복원',
+      '백업 파일에는 약 이름과 복용 기록이 들어 있어요. 믿을 수 있는 곳에 보관해 주세요.',
+    ];
+
+    for (final width in widths) {
+      for (final scale in scales) {
+        testWidgets('폭 $width·글씨 $scale배에서 백업 줄이 칸 안에 있다', (tester) async {
+          await setSurface(tester, width: width, textScale: scale);
+          await tester.pumpWidget(
+            MaterialApp(theme: AppTheme.light, home: const SettingsScreen()),
+          );
+          await tester.pump();
+
+          expect(takeErrors(tester), isEmpty);
+          for (final label in labels) {
+            await tester.ensureVisible(find.text(label));
+            final text = tester.renderObject<RenderParagraph>(find.text(label));
+            expect(text.debugHasOverflowShader, isFalse, reason: label);
+            final rect = tester.getRect(find.text(label));
+            expect(rect.left, greaterThanOrEqualTo(-0.1), reason: label);
+            expect(rect.right, lessThanOrEqualTo(width + 0.1), reason: label);
+            expect(rect.width, greaterThan(0), reason: label);
           }
         });
       }

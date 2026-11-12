@@ -1,5 +1,9 @@
 platform :ios, '15.0'
 
+# file_picker 10.3.10은 PICKER_MEDIA·PICKER_AUDIO가 없으면 사진 갤러리와 음악 재생 권한을 켠다. Info.plist에 그 문구가 없어 출시가 막히므로 둘 다 끈다.
+Pod::PICKER_MEDIA = false
+Pod::PICKER_AUDIO = false
+
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
