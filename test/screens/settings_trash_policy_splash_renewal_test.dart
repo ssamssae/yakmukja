@@ -244,7 +244,7 @@ void main() {
     await tester.pump();
   });
 
-  testWidgets('splash is a white screen with the centered app icon', (
+  testWidgets('splash is a white screen with the app icon and name centered', (
     tester,
   ) async {
     await tester.runAsync(openBox);
@@ -257,12 +257,18 @@ void main() {
     expect(scaffold.backgroundColor, Colors.white);
     expect(find.byKey(SplashScreen.iconKey), findsOneWidget);
     expect(find.text('건강한 하루의 시작'), findsNothing);
-    expect(find.text('약먹자'), findsNothing);
+    // T-261112-035: 아이콘 아래에 앱 이름 「약먹자」를 보여 준다.
+    expect(find.text('약먹자'), findsOneWidget);
+    expect(find.byKey(SplashScreen.nameKey), findsOneWidget);
 
-    final icon = tester.getCenter(find.byKey(SplashScreen.iconKey));
     final size = tester.getSize(find.byType(Scaffold));
-    expect(icon.dx, closeTo(size.width / 2, 1));
-    expect(icon.dy, closeTo(size.height / 2, 1));
+    final icon = tester.getRect(find.byKey(SplashScreen.iconKey));
+    final name = tester.getRect(find.byKey(SplashScreen.nameKey));
+    expect(icon.center.dx, closeTo(size.width / 2, 1));
+    expect(name.center.dx, closeTo(size.width / 2, 1));
+    expect(name.top, greaterThanOrEqualTo(icon.bottom + 12));
+    // 아이콘과 이름을 한 묶음으로 세로 가운데에 둔다.
+    expect((icon.top + name.bottom) / 2, closeTo(size.height / 2, 1));
 
     await tester.pump(const Duration(milliseconds: 1500));
     await tester.pump();
@@ -270,6 +276,38 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('아직 등록된 약이 없어요'), findsOneWidget);
     expect(find.byKey(SplashScreen.iconKey), findsNothing);
+  });
+
+  testWidgets('splash name fits and reads once at the largest text size', (
+    tester,
+  ) async {
+    await tester.runAsync(openBox);
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(
+          size: Size(320, 568),
+          textScaler: TextScaler.linear(3.12),
+        ),
+        child: MaterialApp(theme: AppTheme.light, home: const SplashScreen()),
+      ),
+    );
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    final name = tester.getRect(find.byKey(SplashScreen.nameKey));
+    expect(name.left, greaterThanOrEqualTo(0));
+    expect(name.right, lessThanOrEqualTo(320));
+    expect(find.bySemanticsLabel('약먹자'), findsOneWidget);
+    semantics.dispose();
+
+    await tester.pump(const Duration(milliseconds: 1500));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pumpAndSettle();
   });
 
   test('native launch color is white like the splash screen', () {
