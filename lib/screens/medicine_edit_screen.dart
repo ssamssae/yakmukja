@@ -9,7 +9,6 @@ import '../models/medicine.dart';
 import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 import '../theme/renewal_theme.dart';
-import '../widgets/pill_glyph.dart';
 
 class MedicineEditScreen extends StatefulWidget {
   final Medicine? medicine;
@@ -960,90 +959,46 @@ class _NameCard extends StatelessWidget {
         shadows: renewalNowShadows,
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 12, 14, 12),
-        child: Row(
+        padding: const EdgeInsets.fromLTRB(18, 14, 18, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '약 이름',
-                    style: renewalStyle(
-                      13,
-                      FontWeight.w700,
-                      RenewalColors.greenDeep,
-                    ),
-                  ),
-                  TextFormField(
-                    controller: controller,
-                    maxLines: 2,
-                    minLines: 1,
-                    textInputAction: TextInputAction.done,
-                    style: renewalStyle(
-                      26,
-                      FontWeight.w800,
-                      RenewalColors.ink,
-                      height: 1.2,
-                    ),
-                    cursorColor: RenewalColors.green,
-                    decoration: InputDecoration(
-                      hintText: '예: 비타민 D, 혈압약',
-                      hintStyle: renewalStyle(
-                        20,
-                        FontWeight.w700,
-                        RenewalColors.hush,
-                        height: 1.2,
-                      ),
-                      filled: false,
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 6),
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      errorBorder: InputBorder.none,
-                      focusedErrorBorder: InputBorder.none,
-                      errorStyle: renewalStyle(
-                        13,
-                        FontWeight.w600,
-                        AppColors.danger,
-                      ),
-                    ),
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? '이름을 입력해 주세요.' : null,
-                  ),
-                ],
-              ),
+            Text(
+              '약 이름',
+              style: renewalStyle(13, FontWeight.w700, RenewalColors.greenDeep),
             ),
-            const SizedBox(width: 8),
-            ValueListenableBuilder<TextEditingValue>(
-              valueListenable: controller,
-              builder: (context, value, _) {
-                final typed = value.text.trim();
-                final look = typed.isEmpty
-                    ? PillLook.mascot
-                    : lookForMedicineName(typed);
-                return Container(
-                  width: 76,
-                  height: 76,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        look.soft,
-                        Color.lerp(look.soft, look.cap, 0.6)!,
-                      ],
-                    ),
-                  ),
-                  child: PillGlyph(
-                    look: look,
-                    size: 54,
-                    face: typed.isEmpty,
-                    shadow: true,
-                  ),
-                );
-              },
+            TextFormField(
+              controller: controller,
+              maxLines: 2,
+              minLines: 1,
+              textInputAction: TextInputAction.done,
+              style: renewalStyle(
+                26,
+                FontWeight.w800,
+                RenewalColors.ink,
+                height: 1.2,
+              ),
+              cursorColor: RenewalColors.green,
+              decoration: InputDecoration(
+                hintText: '예: 비타민 D, 혈압약',
+                hintStyle: renewalStyle(
+                  20,
+                  FontWeight.w700,
+                  RenewalColors.hush,
+                  height: 1.2,
+                ),
+                filled: false,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 6),
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                errorBorder: InputBorder.none,
+                focusedErrorBorder: InputBorder.none,
+                errorStyle: renewalStyle(13, FontWeight.w600, AppColors.danger),
+              ),
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? '이름을 입력해 주세요.' : null,
             ),
           ],
         ),
@@ -1080,7 +1035,8 @@ class _SectionCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // 제목과 흐린 말이 길면 다음 줄로 내려간다. (T-261111-042)
-                Flexible(
+                // 남는 너비를 다 차지해서 오른쪽 단추를 카드 끝으로 민다. (T-261112-032)
+                Expanded(
                   child: Wrap(
                     spacing: 6,
                     runSpacing: 2,
