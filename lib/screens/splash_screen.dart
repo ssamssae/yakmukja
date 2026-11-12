@@ -8,6 +8,8 @@ class SplashScreen extends StatefulWidget {
 
   static const String logoAssetPath = 'assets/images/logo.png';
   static const Key iconKey = Key('splash-app-icon');
+  static const Key nameKey = Key('splash-app-name');
+  static const String appName = '약먹자';
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -35,32 +37,49 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 앱 아이콘(초록 바탕 흰 「약」) 아래에 앱 이름을 함께 보여 준다.
+    // 아이콘과 이름을 한 묶음으로 화면 가운데에 둔다. (T-261112-035)
     return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
-        child: Semantics(
-          label: '약먹자',
-          image: true,
-          child: ClipRRect(
-            key: SplashScreen.iconKey,
-            borderRadius: BorderRadius.circular(28),
-            child: Image.asset(
-              SplashScreen.logoAssetPath,
-              width: 120,
-              height: 120,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stack) => Container(
-                width: 120,
-                height: 120,
-                color: RenewalColors.green50,
-                alignment: Alignment.center,
-                child: const Icon(
-                  Icons.medication_rounded,
-                  size: 72,
-                  color: RenewalColors.green,
+        child: MergeSemantics(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Semantics(
+                image: true,
+                child: ClipRRect(
+                  key: SplashScreen.iconKey,
+                  borderRadius: BorderRadius.circular(28),
+                  child: Image.asset(
+                    SplashScreen.logoAssetPath,
+                    width: 120,
+                    height: 120,
+                    fit: BoxFit.cover,
+                    excludeFromSemantics: true,
+                    errorBuilder: (context, error, stack) => Container(
+                      width: 120,
+                      height: 120,
+                      color: RenewalColors.green50,
+                      alignment: Alignment.center,
+                      child: const Icon(
+                        Icons.medication_rounded,
+                        size: 72,
+                        color: RenewalColors.green,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(height: 16),
+              Text(
+                SplashScreen.appName,
+                key: SplashScreen.nameKey,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                style: renewalStyle(26, FontWeight.w800, RenewalColors.ink),
+              ),
+            ],
           ),
         ),
       ),
