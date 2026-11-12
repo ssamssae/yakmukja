@@ -6,7 +6,7 @@ import 'package:yakmukja/theme/app_theme.dart';
 import 'package:yakmukja/widgets/pill_glyph.dart';
 
 void main() {
-  testWidgets('new registration uses the renewal pill and save button', (
+  testWidgets('new registration has no pill picture and a save button', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -14,7 +14,7 @@ void main() {
     );
 
     expect(find.text('약 등록'), findsOneWidget);
-    expect(find.byType(PillGlyph), findsOneWidget);
+    expect(find.byType(PillGlyph), findsNothing);
     expect(find.text('저장'), findsOneWidget);
     expect(find.byTooltip('취소'), findsOneWidget);
 
@@ -47,6 +47,6 @@ void main() {
     expect(find.text('2알'), findsOneWidget);
     expect(find.text('아침 8:30'), findsOneWidget);
     expect(find.text('삭제'), findsOneWidget);
-    expect(find.byType(PillGlyph), findsOneWidget);
+    expect(find.byType(PillGlyph), findsNothing);
   });
 }
