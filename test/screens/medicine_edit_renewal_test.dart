@@ -49,4 +49,20 @@ void main() {
     expect(find.text('삭제'), findsOneWidget);
     expect(find.byType(PillGlyph), findsNothing);
   });
+
+  testWidgets('section add buttons sit at the right edge of the card', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(theme: AppTheme.light, home: const MedicineEditScreen()),
+    );
+
+    // 제목 줄의 「+ 추가」는 카드 오른쪽 끝에 붙는다. 제목 바로 옆에 붙지 않는다.
+    final screenWidth = tester.getSize(find.byType(MedicineEditScreen)).width;
+    final adds = find.text('추가');
+    expect(adds, findsNWidgets(2));
+    for (var i = 0; i < 2; i++) {
+      expect(screenWidth - tester.getRect(adds.at(i)).right, lessThan(60));
+    }
+  });
 }

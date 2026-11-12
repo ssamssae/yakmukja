@@ -1035,7 +1035,8 @@ class _SectionCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // 제목과 흐린 말이 길면 다음 줄로 내려간다. (T-261111-042)
-                Flexible(
+                // 남는 너비를 다 차지해서 오른쪽 단추를 카드 끝으로 민다. (T-261112-032)
+                Expanded(
                   child: Wrap(
                     spacing: 6,
                     runSpacing: 2,
