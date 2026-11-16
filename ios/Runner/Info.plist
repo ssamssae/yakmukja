@@ -276,6 +276,19 @@
 		<key>ITSAppUsesNonExemptEncryption</key>
 		<false/>
 		<!-- ATT 키 제거 (2026-05-12 1.0.2+5): ASC App Privacy 미선언 상태에서 binary ATT 신호 → BINARY_INDICATES_APP_TRACKS_USERS 409. AdMob non-personalized 광고만 사용. personalized 광고는 v1.0.3+ 에서 ATT UX + ASC Privacy 선언 + 코드 동작 세트로 추가. -->
+		<!-- 로그인 없는 iCloud 백업 (T-261116-043): 파일 앱의 iCloud Drive 에 「약먹자」 폴더로 보인다. -->
+		<key>NSUbiquitousContainers</key>
+		<dict>
+			<key>iCloud.com.ssamssae.yakmukja</key>
+			<dict>
+				<key>NSUbiquitousContainerIsDocumentScopePublic</key>
+				<true/>
+				<key>NSUbiquitousContainerName</key>
+				<string>약먹자</string>
+				<key>NSUbiquitousContainerSupportedFolderLevels</key>
+				<string>None</string>
+			</dict>
+		</dict>
 		<key>UIStatusBarHidden</key>
 		<false/>
 	</dict>
