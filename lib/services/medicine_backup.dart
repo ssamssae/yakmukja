@@ -117,6 +117,10 @@ class MedicineBackup {
   }
 }
 
+/// [medicineBackupFileName] 이 만든 이름인지. iCloud 폴더에서 약먹자 백업만 고를 때 쓴다.
+bool isMedicineBackupFileName(String name) =>
+    RegExp(r'^yakmukja-backup-\d{8}-\d{4}\.json$').hasMatch(name);
+
 /// 공유 창에 넘길 파일 이름. `yakmukja-backup-YYYYMMDD-HHmm.json`.
 String medicineBackupFileName(DateTime now) {
   String two(int value) => value.toString().padLeft(2, '0');

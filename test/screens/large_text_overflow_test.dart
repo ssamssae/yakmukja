@@ -191,32 +191,60 @@ void main() {
   });
 
   group('설정 백업', () {
-    const labels = [
-      '약 목록 백업',
-      '백업에서 복원',
-      '백업 파일에는 약 이름과 복용 기록이 들어 있어요. 믿을 수 있는 곳에 보관해 주세요.',
-    ];
+    // T-261116-043 — 아이폰은 iCloud 줄이 파일 줄 위에 더 붙는다. 두 기기 모두 본다.
+    const labelsFor = {
+      TargetPlatform.android: [
+        '파일로 백업',
+        '파일에서 복원',
+        '폰을 바꾸거나 아이폰으로 옮길 때도 이 파일로 복원하면 돼요. '
+            '백업 파일에는 약 이름과 복용 기록이 들어 있어요. 믿을 수 있는 곳에 보관해 주세요.',
+      ],
+      TargetPlatform.iOS: [
+        'iCloud에 백업',
+        'iCloud에서 복원',
+        '로그인 없이 이 기기의 iCloud에 약 목록과 복용 기록을 저장해요. '
+            '같은 Apple 계정의 새 아이폰·아이패드에서 복원할 수 있어요. 최근 백업 5개를 보관해요.',
+        '파일로 백업',
+        '파일에서 복원',
+        '안드로이드 폰으로 옮길 때는 파일로 백업해 새 폰에서 복원하세요. '
+            '백업 파일에는 약 이름과 복용 기록이 들어 있어요. 믿을 수 있는 곳에 보관해 주세요.',
+      ],
+    };
 
-    for (final width in widths) {
-      for (final scale in scales) {
-        testWidgets('폭 $width·글씨 $scale배에서 백업 줄이 칸 안에 있다', (tester) async {
-          await setSurface(tester, width: width, textScale: scale);
-          await tester.pumpWidget(
-            MaterialApp(theme: AppTheme.light, home: const SettingsScreen()),
-          );
-          await tester.pump();
+    for (final MapEntry(key: platform, value: labels) in labelsFor.entries) {
+      for (final width in widths) {
+        for (final scale in scales) {
+          testWidgets('${platform.name} 폭 $width·글씨 $scale배에서 백업 줄이 칸 안에 있다', (
+            tester,
+          ) async {
+            await setSurface(tester, width: width, textScale: scale);
+            await tester.pumpWidget(
+              MaterialApp(
+                theme: AppTheme.light,
+                home: SettingsScreen(platform: platform),
+              ),
+            );
+            await tester.pump();
 
-          expect(takeErrors(tester), isEmpty);
-          for (final label in labels) {
-            await tester.ensureVisible(find.text(label));
-            final text = tester.renderObject<RenderParagraph>(find.text(label));
-            expect(text.debugHasOverflowShader, isFalse, reason: label);
-            final rect = tester.getRect(find.text(label));
-            expect(rect.left, greaterThanOrEqualTo(-0.1), reason: label);
-            expect(rect.right, lessThanOrEqualTo(width + 0.1), reason: label);
-            expect(rect.width, greaterThan(0), reason: label);
-          }
-        });
+            expect(takeErrors(tester), isEmpty);
+            for (final label in labels) {
+              // 큰 글씨에서는 아래쪽 줄이 아직 만들어지지 않았을 수 있어 내려가며 찾는다.
+              await tester.scrollUntilVisible(
+                find.text(label),
+                200,
+                scrollable: find.byType(Scrollable).first,
+              );
+              final text = tester.renderObject<RenderParagraph>(
+                find.text(label),
+              );
+              expect(text.debugHasOverflowShader, isFalse, reason: label);
+              final rect = tester.getRect(find.text(label));
+              expect(rect.left, greaterThanOrEqualTo(-0.1), reason: label);
+              expect(rect.right, lessThanOrEqualTo(width + 0.1), reason: label);
+              expect(rect.width, greaterThan(0), reason: label);
+            }
+          });
+        }
       }
     }
   });
