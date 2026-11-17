@@ -81,7 +81,11 @@ void main() {
   test('최근 5개만 남기고 오래된 백업은 지운다', () async {
     files = [
       for (var day = 10; day <= 15; day++)
-        {'name': 'yakmukja-backup-202611$day-0900.json', 'modified': 0, 'size': 1},
+        {
+          'name': 'yakmukja-backup-202611$day-0900.json',
+          'modified': 0,
+          'size': 1,
+        },
     ];
 
     await ICloudMedicineBackup().upload(
@@ -91,14 +95,19 @@ void main() {
 
     final names = files.map((file) => file['name']).toList()..sort();
     expect(names, [
-      for (var day = 12; day <= 16; day++) 'yakmukja-backup-202611$day-0900.json',
+      for (var day = 12; day <= 16; day++)
+        'yakmukja-backup-202611$day-0900.json',
     ]);
   });
 
   test('오래된 백업 지우기가 실패해도 새 백업은 성공으로 본다', () async {
     files = [
       for (var day = 10; day <= 15; day++)
-        {'name': 'yakmukja-backup-202611$day-0900.json', 'modified': 0, 'size': 1},
+        {
+          'name': 'yakmukja-backup-202611$day-0900.json',
+          'modified': 0,
+          'size': 1,
+        },
     ];
     failOn = 'delete';
 
@@ -115,10 +124,22 @@ void main() {
 
   test('목록은 최신 백업부터, 약먹자 백업 이름만 보여 준다', () async {
     files = [
-      {'name': 'yakmukja-backup-20261101-0900.json', 'modified': 1000, 'size': 10},
+      {
+        'name': 'yakmukja-backup-20261101-0900.json',
+        'modified': 1000,
+        'size': 10,
+      },
       {'name': 'notes.txt', 'modified': 2000, 'size': 1},
-      {'name': 'hanjul-backup-2026-11-16-1905.json', 'modified': 2500, 'size': 1},
-      {'name': 'yakmukja-backup-20261116-1905.json', 'modified': 3000, 'size': 20},
+      {
+        'name': 'hanjul-backup-2026-11-16-1905.json',
+        'modified': 2500,
+        'size': 1,
+      },
+      {
+        'name': 'yakmukja-backup-20261116-1905.json',
+        'modified': 3000,
+        'size': 20,
+      },
     ];
 
     final list = await ICloudMedicineBackup().list();
@@ -139,6 +160,31 @@ void main() {
     );
 
     expect(file.label, '2026-11-16 19:05');
+  });
+
+  test('목록 줄의 크기는 KB 또는 MB 로 보여 준다', () {
+    String labelOf(int size) => ICloudBackupFile(
+      name: 'yakmukja-backup-20261116-1905.json',
+      modified: DateTime.fromMillisecondsSinceEpoch(0),
+      size: size,
+    ).sizeLabel;
+
+    expect(labelOf(0), '0KB');
+    expect(labelOf(512), '0.5KB');
+    expect(labelOf(1536), '1.5KB');
+    expect(labelOf(10 * 1024), '10KB');
+    expect(labelOf(2 * 1024 * 1024), '2MB');
+    expect(labelOf(3 * 1024 * 1024 ~/ 2), '1.5MB');
+  });
+
+  test('delete 는 그 이름으로 delete 채널을 부른다', () async {
+    const name = 'yakmukja-backup-20261116-1905.json';
+
+    await ICloudMedicineBackup().delete(name);
+
+    final delete = calls.single;
+    expect(delete.method, 'delete');
+    expect((delete.arguments as Map)['name'], name);
   });
 
   test('복원은 고른 백업 파일의 내용을 기기에서 받아 온다', () async {

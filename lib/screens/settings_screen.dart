@@ -18,6 +18,7 @@ import '../services/medicine_backup.dart';
 import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 import '../theme/renewal_theme.dart';
+import '../widgets/icloud_backup_list.dart';
 import '../widgets/renewal_page.dart';
 import 'history_screen.dart';
 import 'policy_screen.dart';
@@ -284,43 +285,16 @@ class SettingsScreen extends StatelessWidget {
     messenger.showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<void> _restoreFromICloud(BuildContext context) async {
+  /// 목록에서 고른 파일 하나로 복원한다. 고르는 창은 없고, 받기·확인·교체는 그대로다.
+  Future<void> _restoreICloudFile(BuildContext context, String name) async {
     final messenger = ScaffoldMessenger.of(context);
     final icloud = _icloud;
-    final List<ICloudBackupFile> files;
-    try {
-      files = await _withProgress(context, 'iCloud에서 백업을 찾고 있어요', () async {
-        if (!await icloud.isAvailable()) throw const _ICloudUnavailable();
-        return icloud.list();
-      });
-    } catch (error) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            _isUnavailable(error)
-                ? _icloudUnavailableText
-                : _icloudFetchFailedText,
-          ),
-        ),
-      );
-      return;
-    }
-    if (!context.mounted) return;
-    if (files.isEmpty) {
-      messenger.showSnackBar(
-        const SnackBar(content: Text('iCloud에 약먹자 백업이 없어요')),
-      );
-      return;
-    }
-    final name = await _chooseICloudBackup(context, files);
-    if (name == null || !context.mounted) return;
     final Uint8List bytes;
     try {
-      bytes = await _withProgress(
-        context,
-        'iCloud에서 백업을 받고 있어요',
-        () => icloud.download(name),
-      );
+      bytes = await _withProgress(context, 'iCloud에서 백업을 받고 있어요', () async {
+        if (!await icloud.isAvailable()) throw const _ICloudUnavailable();
+        return icloud.download(name);
+      });
     } on MedicineBackupException catch (error) {
       messenger.showSnackBar(SnackBar(content: Text(error.message)));
       return;
@@ -399,51 +373,6 @@ class SettingsScreen extends StatelessWidget {
     }
   }
 
-  Future<String?> _chooseICloudBackup(
-    BuildContext context,
-    List<ICloudBackupFile> files,
-  ) {
-    return showDialog<String>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Text(
-          '어느 백업으로 복원할까요?',
-          style: renewalStyle(20, FontWeight.w800, RenewalColors.ink),
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              for (final file in files)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.cloud_outlined),
-                  title: Text(
-                    file.label,
-                    style: renewalStyle(16, FontWeight.w700, RenewalColors.ink),
-                  ),
-                  onTap: () => Navigator.of(dialogContext).pop(file.name),
-                ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(
-              '취소',
-              style: renewalStyle(15, FontWeight.w700, RenewalColors.faint),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _backupNotice(String text) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
@@ -506,19 +435,10 @@ class SettingsScreen extends StatelessWidget {
         const RenewalSectionLabel('백업'),
         // 아이폰 기본 = 로그인 없는 iCloud, 파일은 안드로이드로 옮길 때 (T-261116-043).
         if (_isIOS) ...[
-          RenewalMenuCard(
-            children: [
-              RenewalMenuRow(
-                icon: Icons.cloud_upload_outlined,
-                label: 'iCloud에 백업',
-                onTap: () => _backupToICloud(context),
-              ),
-              RenewalMenuRow(
-                icon: Icons.cloud_download_outlined,
-                label: 'iCloud에서 복원',
-                onTap: () => _restoreFromICloud(context),
-              ),
-            ],
+          ICloudBackupList(
+            icloud: _icloud,
+            onBackup: () => _backupToICloud(context),
+            onRestore: (name) => _restoreICloudFile(context, name),
           ),
           _backupNotice(
             '로그인 없이 이 기기의 iCloud에 약 목록과 복용 기록을 저장해요. '

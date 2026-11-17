@@ -14,12 +14,35 @@ class ICloudBackupFile {
   final DateTime modified;
   final int size;
 
-  /// 고르기 창에 보여 줄 날짜와 시각. 파일 이름 속 시각을 쓴다(`2026-11-16 19:05`).
+  /// 목록에 보여 줄 날짜와 시각. 파일 이름 속 시각을 쓴다(`2026-11-16 19:05`).
   String get label {
-    final match = RegExp(r'(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})').firstMatch(name);
+    final match = RegExp(
+      r'(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})',
+    ).firstMatch(name);
     if (match == null) return name;
     return '${match[1]}-${match[2]}-${match[3]} ${match[4]}:${match[5]}';
   }
+
+  /// 목록 줄에 보여 줄 크기. 1MB 미만은 KB, 그 이상은 MB.
+  String get sizeLabel => _icloudBackupSizeLabel(size);
+}
+
+/// 바이트 수를 KB/MB 로 줄인다. 0이 아닌데 0.1KB 보다 작으면 0.1KB 로 올린다.
+String _icloudBackupSizeLabel(int bytes) {
+  final safe = bytes < 0 ? 0 : bytes;
+  const kb = 1024;
+  const mb = 1024 * 1024;
+  if (safe >= mb) return '${_icloudSizeNumber(safe / mb)}MB';
+  return '${_icloudSizeNumber(safe / kb)}KB';
+}
+
+String _icloudSizeNumber(double value) {
+  if (value == 0) return '0';
+  if (value < 0.1) return '0.1';
+  final tenths = (value * 10).round() / 10;
+  if (tenths >= 10) return tenths.round().toString();
+  if (tenths == tenths.roundToDouble()) return tenths.toInt().toString();
+  return tenths.toStringAsFixed(1);
 }
 
 /// 아이폰 기본 백업 — 로그인 없는 iCloud (T-261116-043, 한줄일기 방식).
@@ -94,10 +117,15 @@ class ICloudMedicineBackup {
     return bytes;
   }
 
+  /// 고른 백업 파일 하나를 지운다. 기기 쪽 `delete` 채널에 이름만 보낸다.
+  Future<void> delete(String name) {
+    return _channel.invokeMethod<void>('delete', {'name': name});
+  }
+
   Future<void> _prune() async {
     final files = await list();
     for (final old in files.skip(keep)) {
-      await _channel.invokeMethod<void>('delete', {'name': old.name});
+      await delete(old.name);
     }
   }
 }
