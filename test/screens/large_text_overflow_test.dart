@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:yakmukja/screens/medicine_edit_screen.dart';
 import 'package:yakmukja/screens/settings_screen.dart';
+import 'package:yakmukja/services/icloud_medicine_backup.dart';
 import 'package:yakmukja/theme/app_theme.dart';
 import 'package:yakmukja/widgets/renewal_dock.dart';
 
@@ -201,7 +203,10 @@ void main() {
       ],
       TargetPlatform.iOS: [
         'iCloud에 백업',
-        'iCloud에서 복원',
+        '2026-11-16 19:05',
+        '2KB',
+        '복원',
+        '지우기',
         '로그인 없이 이 기기의 iCloud에 약 목록과 복용 기록을 저장해요. '
             '같은 Apple 계정의 새 아이폰·아이패드에서 복원할 수 있어요. 최근 백업 5개를 보관해요.',
         '파일로 백업',
@@ -220,10 +225,19 @@ void main() {
             await setSurface(tester, width: width, textScale: scale);
             await tester.pumpWidget(
               MaterialApp(
+                locale: const Locale('ko'),
+                supportedLocales: const [Locale('ko'), Locale('en')],
+                localizationsDelegates: GlobalMaterialLocalizations.delegates,
                 theme: AppTheme.light,
-                home: SettingsScreen(platform: platform),
+                home: SettingsScreen(
+                  platform: platform,
+                  icloud: platform == TargetPlatform.iOS
+                      ? _QuietICloud()
+                      : null,
+                ),
               ),
             );
+            await tester.pump();
             await tester.pump();
 
             expect(takeErrors(tester), isEmpty);
@@ -248,4 +262,16 @@ void main() {
       }
     }
   });
+}
+
+/// 글자 크기 시험은 기기 iCloud 를 부르지 않는다.
+class _QuietICloud extends ICloudMedicineBackup {
+  @override
+  Future<List<ICloudBackupFile>> list() async => [
+    ICloudBackupFile(
+      name: 'yakmukja-backup-20261116-1905.json',
+      modified: DateTime(2026),
+      size: 2048,
+    ),
+  ];
 }

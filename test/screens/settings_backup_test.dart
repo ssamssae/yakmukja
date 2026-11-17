@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -73,12 +75,16 @@ void main() {
     ICloudMedicineBackup? icloud,
     TargetPlatform? platform,
     Size size = const Size(402, 1600),
+    Locale locale = const Locale('ko'),
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
       MaterialApp(
+        locale: locale,
+        supportedLocales: const [Locale('ko'), Locale('en')],
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
         theme: AppTheme.light,
         home: SettingsScreen(
           backupFiles: files,
@@ -89,6 +95,22 @@ void main() {
       ),
     );
     await tester.pump();
+  }
+
+  Future<void> tapFileAction(
+    WidgetTester tester,
+    String fileName,
+    String action,
+  ) async {
+    final row = find.byKey(ValueKey('icloud-backup-$fileName'));
+    await tester.ensureVisible(row);
+    await tester.tap(
+      find.descendant(
+        of: row,
+        matching: find.widgetWithText(TextButton, action),
+      ),
+    );
+    await tester.pumpAndSettle();
   }
 
   Future<void> tapRow(WidgetTester tester, String label) async {
@@ -107,6 +129,8 @@ void main() {
     expect(find.text(_androidFileNotice), findsOneWidget);
     expect(find.text('iCloud에 백업'), findsNothing);
     expect(find.text('iCloud에서 복원'), findsNothing);
+    expect(find.text('아직 백업이 없어요'), findsNothing);
+    expect(find.text('불러오는 중'), findsNothing);
     expect(find.text('백업'), findsOneWidget);
 
     await tester.ensureVisible(find.text('휴지통'));
@@ -362,20 +386,21 @@ void main() {
       appVersion: '1.2.1+17',
     );
 
-    testWidgets('아이폰은 iCloud 두 줄을 파일 두 줄 위에 보여 준다', (tester) async {
-      await pumpSettings(
-        tester,
-        icloud: _FakeICloud(),
-        platform: TargetPlatform.iOS,
-      );
+    testWidgets('아이폰은 iCloud 백업과 빈 목록을 파일 두 줄 위에 보여 준다', (tester) async {
+      final icloud = _FakeICloud();
+      await pumpSettings(tester, icloud: icloud, platform: TargetPlatform.iOS);
 
       expect(find.byIcon(Icons.cloud_upload_outlined), findsOneWidget);
-      expect(find.byIcon(Icons.cloud_download_outlined), findsOneWidget);
+      expect(find.byIcon(Icons.cloud_download_outlined), findsNothing);
+      expect(find.text('iCloud에서 복원'), findsNothing);
+      expect(find.text('어느 백업으로 복원할까요?'), findsNothing);
+      expect(find.text('아직 백업이 없어요'), findsOneWidget);
+      expect(icloud.listCount, greaterThanOrEqualTo(1));
       expect(find.text(_icloudNotice), findsOneWidget);
       expect(find.text(_iosFileNotice), findsOneWidget);
       expect(find.text(_androidFileNotice), findsNothing);
 
-      final order = ['iCloud에 백업', 'iCloud에서 복원', '파일로 백업', '파일에서 복원'];
+      final order = ['iCloud에 백업', '아직 백업이 없어요', '파일로 백업', '파일에서 복원'];
       for (final label in order) {
         await tester.ensureVisible(find.text(label));
       }
@@ -426,7 +451,9 @@ void main() {
 
     testWidgets('iCloud 에 올리다 실패하면 실패 안내를 보여 준다', (tester) async {
       await box.add(pill('혈압약'));
-      final icloud = _FakeICloud(uploadError: PlatformException(code: 'failed'));
+      final icloud = _FakeICloud(
+        uploadError: PlatformException(code: 'failed'),
+      );
       await pumpSettings(tester, icloud: icloud, platform: TargetPlatform.iOS);
 
       await tapRow(tester, 'iCloud에 백업');
@@ -438,7 +465,29 @@ void main() {
       expect(find.text('iCloud에 백업했어요'), findsNothing);
     });
 
-    testWidgets('iCloud 복원은 최신 백업부터 고르고 확인 뒤 약 목록을 바꾼다', (tester) async {
+    testWidgets('iCloud 목록은 최신이 위에 오고 날짜와 크기를 보여 준다', (tester) async {
+      const newer = 'yakmukja-backup-20261116-1905.json';
+      const older = 'yakmukja-backup-20261115-0900.json';
+      final icloud = _FakeICloud(
+        files: [
+          _file(older, size: 1536),
+          _file(newer, size: 2 * 1024 * 1024),
+        ],
+      );
+      await pumpSettings(tester, icloud: icloud, platform: TargetPlatform.iOS);
+
+      expect(find.text('2026-11-16 19:05'), findsOneWidget);
+      expect(find.text('2026-11-15 09:00'), findsOneWidget);
+      expect(find.text('2MB'), findsOneWidget);
+      expect(find.text('1.5KB'), findsOneWidget);
+      expect(find.text('아직 백업이 없어요'), findsNothing);
+      expect(
+        tester.getTopLeft(find.text('2026-11-16 19:05')).dy,
+        lessThan(tester.getTopLeft(find.text('2026-11-15 09:00')).dy),
+      );
+    });
+
+    testWidgets('줄의 복원은 그 파일로 확인 창을 거쳐 약 목록을 바꾼다', (tester) async {
       await box.add(pill('혈압약', hour: 9));
       const newer = 'yakmukja-backup-20261116-1905.json';
       const older = 'yakmukja-backup-20261115-0900.json';
@@ -451,64 +500,77 @@ void main() {
       );
       await pumpSettings(tester, icloud: icloud, platform: TargetPlatform.iOS);
 
-      await tapRow(tester, 'iCloud에서 복원');
+      await tapFileAction(tester, older, '복원');
 
-      expect(find.text('어느 백업으로 복원할까요?'), findsOneWidget);
-      expect(
-        tester.getTopLeft(find.text('2026-11-16 19:05')).dy,
-        lessThan(tester.getTopLeft(find.text('2026-11-15 09:00')).dy),
-      );
-      await tester.tap(find.text('2026-11-16 19:05'));
-      await tester.pumpAndSettle();
-
-      expect(icloud.downloaded, newer);
+      expect(find.text('어느 백업으로 복원할까요?'), findsNothing);
+      expect(icloud.downloaded, older);
       expect(find.text('백업에서 복원할까요?'), findsOneWidget);
       expect(find.text('백업 파일의 약 1개로 바꿔요. 지금 등록된 약 1개는 지워져요.'), findsOneWidget);
       await tester.tap(find.widgetWithText(FilledButton, '복원'));
       await tester.pumpAndSettle();
 
-      expect(box.values.map((m) => m.name).toList(), ['비타민']);
+      expect(box.values.map((m) => m.name).toList(), ['옛날약']);
       expect(find.text('약 1개를 복원했어요'), findsOneWidget);
+      expect(icloud.deleteCount, 0);
     });
 
-    testWidgets('iCloud 에 백업이 없으면 알려 준다', (tester) async {
-      await pumpSettings(
-        tester,
-        icloud: _FakeICloud(),
-        platform: TargetPlatform.iOS,
-      );
+    testWidgets('iCloud 백업이 끝나면 목록을 다시 불러 온다', (tester) async {
+      await box.add(pill('혈압약'));
+      final icloud = _FakeICloud(showUploadedFile: true);
+      await pumpSettings(tester, icloud: icloud, platform: TargetPlatform.iOS);
+      expect(find.text('아직 백업이 없어요'), findsOneWidget);
+      final before = icloud.listCount;
 
-      await tapRow(tester, 'iCloud에서 복원');
+      await tapRow(tester, 'iCloud에 백업');
 
-      expect(find.text('iCloud에 약먹자 백업이 없어요'), findsOneWidget);
+      expect(icloud.uploadCount, 1);
+      expect(icloud.listCount, greaterThan(before));
+      expect(find.text('2026-11-17 18:00'), findsOneWidget);
+      expect(find.text('2KB'), findsOneWidget);
+      expect(find.text('아직 백업이 없어요'), findsNothing);
+      expect(find.text('iCloud에 백업했어요'), findsOneWidget);
+    });
+
+    testWidgets('iCloud 에 백업이 없으면 빈 목록 문구를 보여 준다', (tester) async {
+      final icloud = _FakeICloud();
+      await pumpSettings(tester, icloud: icloud, platform: TargetPlatform.iOS);
+
+      expect(find.text('아직 백업이 없어요'), findsOneWidget);
+      expect(find.text('iCloud에 약먹자 백업이 없어요'), findsNothing);
       expect(find.text('어느 백업으로 복원할까요?'), findsNothing);
+      expect(icloud.listCount, greaterThanOrEqualTo(1));
     });
 
-    testWidgets('iCloud 를 못 쓰면 복원 목록을 찾지 않는다', (tester) async {
+    testWidgets('iCloud 를 못 쓰면 줄의 복원은 받지 않고 켜는 방법을 알려 준다', (tester) async {
       final icloud = _FakeICloud(available: false, files: [_file(_sample)]);
       await pumpSettings(tester, icloud: icloud, platform: TargetPlatform.iOS);
 
-      await tapRow(tester, 'iCloud에서 복원');
+      expect(icloud.listCount, greaterThanOrEqualTo(1));
+      await tapFileAction(tester, _sample, '복원');
 
       expect(find.text(_icloudUnavailable), findsOneWidget);
-      expect(icloud.listCount, 0);
+      expect(icloud.downloaded, isNull);
+      expect(find.text('백업에서 복원할까요?'), findsNothing);
     });
 
-    testWidgets('백업 고르기를 취소하면 받지도 바꾸지도 않는다', (tester) async {
+    testWidgets('복원 확인을 취소하면 약 목록을 바꾸지 않는다', (tester) async {
       await box.add(pill('혈압약'));
       final icloud = _FakeICloud(
         files: [_file(_sample)],
-        payloads: {_sample: backupOf([pill('비타민')])},
+        payloads: {
+          _sample: backupOf([pill('비타민')]),
+        },
       );
       await pumpSettings(tester, icloud: icloud, platform: TargetPlatform.iOS);
 
-      await tapRow(tester, 'iCloud에서 복원');
+      await tapFileAction(tester, _sample, '복원');
+      expect(find.text('백업에서 복원할까요?'), findsOneWidget);
       await tester.tap(find.widgetWithText(TextButton, '취소'));
       await tester.pumpAndSettle();
 
-      expect(icloud.downloaded, isNull);
       expect(find.text('백업에서 복원할까요?'), findsNothing);
       expect(box.values.single.name, '혈압약');
+      expect(find.text('약 1개를 복원했어요'), findsNothing);
     });
 
     testWidgets('iCloud 의 백업이 약먹자 것이 아니면 이유를 보여 주고 그대로 둔다', (tester) async {
@@ -519,25 +581,125 @@ void main() {
       );
       await pumpSettings(tester, icloud: icloud, platform: TargetPlatform.iOS);
 
-      await tapRow(tester, 'iCloud에서 복원');
-      await tester.tap(find.text('2026-11-16 19:05'));
-      await tester.pumpAndSettle();
+      await tapFileAction(tester, _sample, '복원');
 
       expect(find.text('약먹자 백업 파일이 아니에요'), findsOneWidget);
       expect(find.text('백업에서 복원할까요?'), findsNothing);
       expect(box.values.single.name, '혈압약');
     });
 
-    testWidgets('iCloud 목록을 못 받으면 실패 안내를 보여 준다', (tester) async {
+    testWidgets('목록을 못 받으면 실패 안내와 다시 시도를 보여 준다', (tester) async {
       final icloud = _FakeICloud(listError: PlatformException(code: 'failed'));
       await pumpSettings(tester, icloud: icloud, platform: TargetPlatform.iOS);
 
-      await tapRow(tester, 'iCloud에서 복원');
-
+      expect(find.text('목록을 불러오지 못했어요'), findsOneWidget);
+      expect(find.text('다시 시도'), findsOneWidget);
+      expect(find.text('아직 백업이 없어요'), findsNothing);
       expect(
         find.text('iCloud에서 백업을 가져오지 못했어요. 인터넷 연결과 iCloud Drive를 확인해 주세요'),
+        findsNothing,
+      );
+
+      icloud.listError = null;
+      icloud.files = [_file(_sample, size: 2048)];
+      await tester.ensureVisible(find.text('다시 시도'));
+      await tester.tap(find.text('다시 시도'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('2026-11-16 19:05'), findsOneWidget);
+      expect(find.text('2KB'), findsOneWidget);
+      expect(find.text('목록을 불러오지 못했어요'), findsNothing);
+      expect(icloud.listCount, greaterThanOrEqualTo(2));
+    });
+
+    testWidgets('목록이 15초 안에 안 오면 실패 안내를 보여 준다', (tester) async {
+      final icloud = _FakeICloud(hangList: true);
+      await pumpSettings(tester, icloud: icloud, platform: TargetPlatform.iOS);
+
+      expect(find.text('불러오는 중'), findsOneWidget);
+      expect(icloud.listCount, greaterThanOrEqualTo(1));
+      await tester.pump(const Duration(seconds: 14));
+      expect(find.text('불러오는 중'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(find.text('목록을 불러오지 못했어요'), findsOneWidget);
+      expect(find.text('다시 시도'), findsOneWidget);
+      expect(find.text('불러오는 중'), findsNothing);
+    });
+
+    testWidgets('줄의 지우기는 확인 뒤에 그 파일을 지우고 목록을 다시 불러 온다', (tester) async {
+      const newer = 'yakmukja-backup-20261116-1905.json';
+      const older = 'yakmukja-backup-20261115-0900.json';
+      final icloud = _FakeICloud(
+        files: [_file(newer, size: 2048), _file(older, size: 1024)],
+      );
+      await pumpSettings(tester, icloud: icloud, platform: TargetPlatform.iOS);
+      final listsBeforeDelete = icloud.listCount;
+
+      await tapFileAction(tester, newer, '지우기');
+
+      expect(find.text('이 백업을 지울까요? 지우면 되돌릴 수 없어요.'), findsOneWidget);
+      expect(icloud.deleteCount, 0);
+      await tester.tap(find.widgetWithText(FilledButton, '지우기'));
+      await tester.pumpAndSettle();
+
+      expect(icloud.deletedNames, [newer]);
+      expect(icloud.listCount, greaterThan(listsBeforeDelete));
+      expect(find.text('2026-11-16 19:05'), findsNothing);
+      expect(find.text('2026-11-15 09:00'), findsOneWidget);
+      expect(find.text('1KB'), findsOneWidget);
+    });
+
+    testWidgets('지우기 확인을 취소하면 파일을 지우지 않는다', (tester) async {
+      const newer = 'yakmukja-backup-20261116-1905.json';
+      const older = 'yakmukja-backup-20261115-0900.json';
+      final icloud = _FakeICloud(files: [_file(newer), _file(older)]);
+      await pumpSettings(tester, icloud: icloud, platform: TargetPlatform.iOS);
+
+      await tapFileAction(tester, newer, '지우기');
+      await tester.tap(find.widgetWithText(TextButton, '취소'));
+      await tester.pumpAndSettle();
+
+      expect(icloud.deleteCount, 0);
+      expect(icloud.deletedNames, isEmpty);
+      expect(find.text('2026-11-16 19:05'), findsOneWidget);
+      expect(find.text('2026-11-15 09:00'), findsOneWidget);
+      expect(find.text('이 백업을 지울까요? 지우면 되돌릴 수 없어요.'), findsNothing);
+    });
+
+    testWidgets('영어 로캘에서는 빈 목록 문구가 영어다', (tester) async {
+      await pumpSettings(
+        tester,
+        icloud: _FakeICloud(),
+        platform: TargetPlatform.iOS,
+        locale: const Locale('en'),
+      );
+
+      expect(find.text('Back up to iCloud'), findsOneWidget);
+      expect(find.text('No backups yet.'), findsOneWidget);
+      expect(find.text('아직 백업이 없어요'), findsNothing);
+    });
+
+    testWidgets('영어 로캘에서는 줄의 복원·지우기와 확인 창이 영어다', (tester) async {
+      final icloud = _FakeICloud(files: [_file(_sample, size: 2048)]);
+      await pumpSettings(
+        tester,
+        icloud: icloud,
+        platform: TargetPlatform.iOS,
+        locale: const Locale('en'),
+      );
+
+      expect(find.text('Restore'), findsOneWidget);
+      expect(find.text('Delete'), findsOneWidget);
+      expect(find.text('2KB'), findsOneWidget);
+      await tapFileAction(tester, _sample, 'Delete');
+      expect(
+        find.text("Delete this backup? This can't be undone."),
         findsOneWidget,
       );
+      await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+      await tester.pumpAndSettle();
+      expect(icloud.deleteCount, 0);
     });
   });
 }
@@ -559,25 +721,31 @@ const _androidFileNotice =
 const _icloudUnavailable =
     'iCloud를 쓸 수 없어요. 설정에서 Apple 계정에 로그인하고 iCloud Drive를 켜 주세요';
 
-ICloudBackupFile _file(String name) =>
-    ICloudBackupFile(name: name, modified: DateTime(2026), size: 1);
+ICloudBackupFile _file(String name, {int size = 1}) =>
+    ICloudBackupFile(name: name, modified: DateTime(2026), size: size);
 
 class _FakeICloud extends ICloudMedicineBackup {
   _FakeICloud({
     this.available = true,
-    this.files = const [],
+    List<ICloudBackupFile> files = const [],
     this.payloads = const {},
     this.listError,
     this.uploadError,
-  });
+    this.hangList = false,
+    this.showUploadedFile = false,
+  }) : files = [...files];
 
   final bool available;
-  final List<ICloudBackupFile> files;
+  List<ICloudBackupFile> files;
   final Map<String, Uint8List> payloads;
-  final Object? listError;
+  Object? listError;
   final Object? uploadError;
+  bool hangList;
+  bool showUploadedFile;
   int uploadCount = 0;
   int listCount = 0;
+  int deleteCount = 0;
+  final deletedNames = <String>[];
   Uint8List? uploaded;
   String? downloaded;
 
@@ -589,19 +757,30 @@ class _FakeICloud extends ICloudMedicineBackup {
     if (uploadError != null) throw uploadError!;
     uploadCount += 1;
     uploaded = Uint8List.fromList(bytes);
+    if (showUploadedFile) {
+      files = [_file('yakmukja-backup-20261117-1800.json', size: 2048)];
+    }
   }
 
   @override
   Future<List<ICloudBackupFile>> list() async {
     listCount += 1;
+    if (hangList) await Completer<void>().future;
     if (listError != null) throw listError!;
-    return files;
+    return List<ICloudBackupFile>.from(files);
   }
 
   @override
   Future<Uint8List> download(String name) async {
     downloaded = name;
     return payloads[name]!;
+  }
+
+  @override
+  Future<void> delete(String name) async {
+    deleteCount += 1;
+    deletedNames.add(name);
+    files.removeWhere((file) => file.name == name);
   }
 }
 
